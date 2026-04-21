@@ -31,29 +31,26 @@ INSERT INTO produto (nome, descricao, preco_unitario, fornecedor_id) VALUES
 -- Inserir um pedido consolidado
 INSERT INTO pedido (grupo_id, fornecedor_id, status) VALUES (1, 1, 'pendente');
 
--- Obter o ID do pedido
-SET @pedido_id = LAST_INSERT_ID();
-
 -- Inserir itens no pedido
 INSERT INTO item_pedido (pedido_id, produto_id, quantidade_total) VALUES
-(@pedido_id, 1, 50), -- 50 sacos de arroz
-(@pedido_id, 2, 100), -- 100 kg de feijão
-(@pedido_id, 3, 30); -- 30 garrafas de óleo
+(1, 1, 50), -- 50 sacos de arroz
+(1, 2, 100), -- 100 kg de feijão
+(1, 3, 30); -- 30 garrafas de óleo
 
 -- Rateio para o arroz (50 sacos): Mercado Central 20, Mini Mercado 15, Loja do João 15
 INSERT INTO rateio (item_pedido_id, empresa_id, quantidade_rateada, custo_rateado) VALUES
-(LAST_INSERT_ID() - 2, 1, 20, 500.00), -- 20 * 25.00
-(LAST_INSERT_ID() - 2, 2, 15, 375.00), -- 15 * 25.00
-(LAST_INSERT_ID() - 2, 3, 15, 375.00); -- 15 * 25.00
+(1, 1, 20, 500.00), -- 20 * 25.00
+(1, 2, 15, 375.00), -- 15 * 25.00
+(1, 3, 15, 375.00); -- 15 * 25.00
 
 -- Rateio para o feijão (100 kg): Mercado Central 40, Mini Mercado 30, Loja do João 30
 INSERT INTO rateio (item_pedido_id, empresa_id, quantidade_rateada, custo_rateado) VALUES
-(LAST_INSERT_ID() - 1, 1, 40, 340.00), -- 40 * 8.50
-(LAST_INSERT_ID() - 1, 2, 30, 255.00), -- 30 * 8.50
-(LAST_INSERT_ID() - 1, 3, 30, 255.00); -- 30 * 8.50
+(2, 1, 40, 340.00), -- 40 * 8.50
+(2, 2, 30, 255.00), -- 30 * 8.50
+(2, 3, 30, 255.00); -- 30 * 8.50
 
 -- Rateio para o óleo (30 garrafas): Mercado Central 12, Mini Mercado 9, Loja do João 9
 INSERT INTO rateio (item_pedido_id, empresa_id, quantidade_rateada, custo_rateado) VALUES
-(LAST_INSERT_ID(), 1, 12, 72.00), -- 12 * 6.00
-(LAST_INSERT_ID(), 2, 9, 54.00), -- 9 * 6.00
-(LAST_INSERT_ID(), 3, 9, 54.00); -- 9 * 6.00
+(3, 1, 12, 72.00), -- 12 * 6.00
+(3, 2, 9, 54.00), -- 9 * 6.00
+(3, 3, 9, 54.00); -- 9 * 6.00

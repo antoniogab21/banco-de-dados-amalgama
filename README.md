@@ -55,19 +55,52 @@ Uma aplicação simples em Python com Flask foi criada para interagir com o banc
    ```
 
 ### Executando a Aplicação
-```
-python app.py
-```
-A API estará disponível em `http://localhost:5000`.
+1. **Certifique-se de que o MySQL está rodando:**
+   ```bash
+   sudo service mysql start
+   ```
 
-### Endpoints da API
-- `GET /`: Mensagem de boas-vindas.
-- `GET /empresas`: Lista todas as empresas.
-- `POST /empresas`: Cria uma nova empresa (JSON: `{"nome": "Nome", "endereco": "Endereço", "contato": "Contato"}`).
-- `GET /grupos`: Lista todos os grupos.
-- `POST /grupos`: Cria um novo grupo (JSON: `{"nome": "Nome", "descricao": "Descrição"}`).
-- `POST /grupos/<id>/empresas`: Associa uma empresa a um grupo (JSON: `{"empresa_id": 1}`).
-- `GET /pedidos`: Lista todos os pedidos com detalhes.
+2. **Crie o banco de dados e tabelas:**
+   ```bash
+   mysql -u root < schema.sql
+   mysql -u root amalgama < dados_exemplo.sql
+   ```
+
+3. **Execute a aplicação:**
+   ```bash
+   python app.py
+   ```
+   A API estará disponível em `http://localhost:5000`.
+
+### Documentação Completa
+Para documentação detalhada de todos os endpoints, exemplos de uso e códigos de resposta HTTP, consulte [API_DOCS.md](API_DOCS.md).
+
+### Testes da API
+Execute o script de testes para validar todos os endpoints:
+```bash
+chmod +x test_api.sh
+./test_api.sh
+```
+
+### Endpoints Principais da API
+- **Status**: `GET /` - Verifica se a API está operacional
+- **Empresas**: `GET/POST /empresas` - Lista e cria empresas
+- **Grupos**: `GET/POST /grupos` - Gerencia grupos de compra
+- **Fornecedores**: `GET/POST /fornecedores` - Gerencia fornecedores
+- **Produtos**: `GET/POST /produtos` - Gerencia produtos
+- **Pedidos**: `GET/POST /pedidos` - Cria e lista pedidos consolidados
+- **Itens de Pedido**: `POST /pedidos/<id>/itens` - Adiciona itens aos pedidos
+- **Rateio**: `POST /itens/<id>/rateio` - Distribui custos entre empresas
+- **Relatórios**: `GET /pedidos/<id>/relatorio` - Gera relatório de custos
+
+### Estrutura de Arquivos
+- `app.py`: Aplicação Flask com todos os endpoints da API
+- `schema.sql`: Script de criação do banco de dados
+- `dados_exemplo.sql`: Dados de exemplo para testes
+- `queries.sql`: Exemplos de consultas SQL úteis
+- `requirements.txt`: Dependências Python
+- `API_DOCS.md`: Documentação completa da API
+- `test_api.sh`: Script de testes dos endpoints
 - `POST /pedidos`: Cria um novo pedido (JSON: `{"grupo_id": 1, "fornecedor_id": 1}`).
 - `POST /pedidos/<id>/itens`: Adiciona item ao pedido (JSON: `{"produto_id": 1, "quantidade_total": 100}`).
 - `POST /itens/<id>/rateio`: Adiciona rateio a um item (JSON: `{"empresa_id": 1, "quantidade_rateada": 50, "custo_rateado": 250.00}`).
