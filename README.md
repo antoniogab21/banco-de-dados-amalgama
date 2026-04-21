@@ -29,5 +29,56 @@ O esquema do banco está definido no arquivo `schema.sql`, que inclui as seguint
 ## Exemplos de Consultas
 Veja o arquivo `queries.sql` para exemplos de consultas SQL que demonstram como inserir dados, consultar informações e gerar relatórios.
 
+## Aplicação Web (API REST)
+Uma aplicação simples em Python com Flask foi criada para interagir com o banco de dados via API REST.
+
+### Pré-requisitos
+- Python 3.7+
+- MySQL Server
+- Dependências: `pip install -r requirements.txt`
+
+### Configuração
+1. Instale as dependências:
+   ```
+   pip install -r requirements.txt
+   ```
+
+2. Configure as variáveis de ambiente (opcional, padrões já definidos):
+   - `DB_HOST`: Host do banco (padrão: localhost)
+   - `DB_USER`: Usuário do banco (padrão: root)
+   - `DB_PASSWORD`: Senha do banco (padrão: vazio)
+   - `DB_NAME`: Nome do banco (padrão: amalgama)
+
+3. Execute o schema SQL no MySQL:
+   ```
+   mysql -u root -p < schema.sql
+   ```
+
+### Executando a Aplicação
+```
+python app.py
+```
+A API estará disponível em `http://localhost:5000`.
+
+### Endpoints da API
+- `GET /`: Mensagem de boas-vindas.
+- `GET /empresas`: Lista todas as empresas.
+- `POST /empresas`: Cria uma nova empresa (JSON: `{"nome": "Nome", "endereco": "Endereço", "contato": "Contato"}`).
+- `GET /grupos`: Lista todos os grupos.
+- `POST /grupos`: Cria um novo grupo (JSON: `{"nome": "Nome", "descricao": "Descrição"}`).
+- `POST /grupos/<id>/empresas`: Associa uma empresa a um grupo (JSON: `{"empresa_id": 1}`).
+- `GET /pedidos`: Lista todos os pedidos com detalhes.
+- `POST /pedidos`: Cria um novo pedido (JSON: `{"grupo_id": 1, "fornecedor_id": 1}`).
+- `POST /pedidos/<id>/itens`: Adiciona item ao pedido (JSON: `{"produto_id": 1, "quantidade_total": 100}`).
+- `POST /itens/<id>/rateio`: Adiciona rateio a um item (JSON: `{"empresa_id": 1, "quantidade_rateada": 50, "custo_rateado": 250.00}`).
+- `GET /pedidos/<id>/relatorio`: Relatório de custos por empresa no pedido.
+
+### Testando a API
+Use ferramentas como Postman, curl ou Insomnia para testar os endpoints. Por exemplo:
+```
+curl -X GET http://localhost:5000/empresas
+```
+
 ## Tecnologias
 - MySQL (ou MariaDB) para o banco de dados relacional.
+- Python com Flask para a API REST.
