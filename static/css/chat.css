@@ -1,0 +1,38 @@
+body{
+    margin:0;
+    font-family:Arial;
+}
+
+.chat-container{
+    height:100vh;
+
+    display:flex;
+    flex-direction:column;
+}
+
+.mensagens{
+    flex:1;
+    padding:20px;
+}
+
+.mensagem{
+    background:#eee;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.enviar{
+    display:flex;
+    padding:20px;
+    gap:10px;
+}
+
+.enviar input{
+    flex:1;
+    padding:10px;
+}
+
+.enviar button{
+    padding:10px 20px;
+}
