@@ -9,7 +9,7 @@ import {
   User,
   Settings,
   Building2,
-  LogOut
+  LogOut,
 } from 'lucide-react';
 
 interface SidebarNewProps {
@@ -17,12 +17,16 @@ interface SidebarNewProps {
   activePage?: string;
   companyName?: string;
   onNavigate?: (page: string) => void;
+
+  /* NOVO */
+  onLogout?: () => void;
 }
 
 export default function SidebarNew({
   userType,
   activePage,
   onNavigate,
+  onLogout,
 }: SidebarNewProps) {
 
   const menuItems = [
@@ -34,7 +38,7 @@ export default function SidebarNew({
 
     {
       id: 'feed',
-      label: 'Feed de Grupos',
+      label: 'Gerenciar Pedidos',
       icon: MessageSquare,
     },
 
@@ -69,6 +73,15 @@ export default function SidebarNew({
     },
   ];
 
+  function handleLogout() {
+
+    localStorage.removeItem('companyName');
+
+    localStorage.removeItem('userType');
+
+    window.location.reload();
+  }
+
   return (
 
     <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
@@ -95,6 +108,7 @@ export default function SidebarNew({
             </p>
 
           </div>
+
         </div>
       </div>
 
@@ -144,6 +158,16 @@ export default function SidebarNew({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="button"
+
+          /* BOTÃO SAIR FUNCIONANDO */
+          onClick={() => {
+            if (onLogout) {
+              onLogout();
+            } else {
+              handleLogout();
+            }
+          }}
+
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition"
         >
 
