@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMÁLGAMA - Login</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='css/login.css') }}">
+
+</head>
+<body>
+
+<div class="container">
+
+    <div class="login-box">
+
+        <h1>AMÁLGAMA</h1>
+
+        <p class="subtitulo">
+            Plataforma colaborativa para mercados e fornecedores
+        </p>
+
+        <input type="text" id="empresaId" placeholder="ID da Empresa">
+
+        <input type="password" id="senha" placeholder="Senha">
+
+        <button onclick="fazerLogin()">
+            Entrar
+        </button>
+
+        <button class="cadastro-btn" onclick="abrirCadastro()">
+            Criar Conta
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+function fazerLogin(){
+
+    let empresaId = document.getElementById("empresaId").value
+    let senha = document.getElementById("senha").value
+
+    if(empresaId === "" || senha === ""){
+
+        alert("Preencha todos os campos")
+        return
+
+    }
+
+    window.location.href = "/painel"
+
+}
+
+function abrirCadastro(){
+
+    window.location.href = "/cadastro"
+
+}
+
+</script>
+
+</body>
+</html>

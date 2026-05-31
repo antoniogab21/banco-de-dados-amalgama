@@ -1,0 +1,28 @@
+body{
+    margin:0;
+    display:flex;
+    font-family:Arial;
+}
+
+.sidebar{
+    width:250px;
+    height:100vh;
+    background:#d8a116;
+    color:white;
+
+    display:flex;
+    flex-direction:column;
+
+    padding:20px;
+}
+
+.sidebar a{
+    color:white;
+    text-decoration:none;
+    margin-top:20px;
+}
+
+.conteudo{
+    flex:1;
+    padding:30px;
+}

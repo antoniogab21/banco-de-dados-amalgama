@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Chat</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='css/chat.css') }}">
+
+</head>
+<body>
+
+<div class="chat-container">
+
+    <div class="mensagens">
+
+        <div class="mensagem">
+            Preciso comprar 20 fardos de feijão
+        </div>
+
+    </div>
+
+    <div class="enviar">
+
+        <input type="text" placeholder="Digite sua mensagem">
+
+        <button>Enviar</button>
+
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+</body>
+</html>

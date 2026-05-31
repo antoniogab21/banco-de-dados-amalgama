@@ -1,3 +1,5 @@
+-- Schema inicial para MySQL (copiado de schema.sql)
+
 -- =========================================================
 -- AMALGAMA DATABASE
 -- MYSQL PROFISSIONAL - VERSÃO FINAL
