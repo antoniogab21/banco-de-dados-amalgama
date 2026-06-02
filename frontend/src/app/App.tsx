@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShoppingCart,
@@ -23,18 +23,27 @@ import PaymentsPage from './components/PaymentsPage';
 import SettingsPage from './components/SettingsPage';
 import SidebarNew from './components/SidebarNew';
 
+type Screen =
+  | 'login'
+  | 'register'
+  | 'type-selection'
+  | 'main';
+
+type UserType = 'mercado' | 'fornecedor';
+
+interface RegisterData {
+  companyName: string;
+  cnpj: string;
+  email: string;
+  password: string;
+}
+
 export default function App() {
+  const [screen, setScreen] =
+    useState<Screen>('login');
 
-  const [screen, setScreen] = useState<
-    'login' |
-    'register' |
-    'type-selection' |
-    'main'
-  >('login');
-
-  const [userType, setUserType] = useState<
-    'mercado' | 'fornecedor' | null
-  >(null);
+  const [userType, setUserType] =
+    useState<UserType | null>(null);
 
   const [companyName, setCompanyName] =
     useState('');
@@ -45,70 +54,176 @@ export default function App() {
   const [selectedGroupId, setSelectedGroupId] =
     useState<string | null>(null);
 
-  /* LOGIN */
-  const handleLogin = (
-    companyNameInput: string
-  ) => {
+  const [pendingRegisterData, setPendingRegisterData] =
+    useState<RegisterData | null>(null);
 
-    localStorage.setItem(
-      'companyName',
-      companyNameInput
+  useEffect(() => {
+    const savedTheme =
+      localStorage.getItem('darkMode') === 'true';
+
+    document.documentElement.classList.toggle(
+      'dark',
+      savedTheme
     );
+  }, []);
 
-    setCompanyName(companyNameInput);
+  const handleLogin = (loginResponse: any) => {
+    const user = loginResponse?.user || loginResponse;
 
-    setScreen('type-selection');
-  };
+    if (!user) {
+      alert('Erro ao fazer login.');
+      return;
+    }
 
-  /* REGISTRO */
-  const handleRegister = (data: any) => {
+    if (!user.tipo_definido) {
+      setScreen('type-selection');
+      return;
+    }
 
-    console.log('Register:', data);
+    const tipo = user.tipo as UserType;
 
-    setScreen('type-selection');
-  };
+    const nome =
+      user?.perfil?.nome ||
+      localStorage.getItem('companyName') ||
+      'Amalgama';
 
-  /* ESCOLHA TIPO */
-  const handleTypeSelection = (
-    type: 'mercado' | 'fornecedor'
-  ) => {
+    localStorage.setItem('companyName', nome);
+    localStorage.setItem('userType', tipo);
 
-    setUserType(type);
-
+    setCompanyName(nome);
+    setUserType(tipo);
+    setCurrentPage('dashboard');
     setScreen('main');
   };
 
-  /* NAVEGAÇÃO */
+  const handleRegister = (data: RegisterData) => {
+    setPendingRegisterData(data);
+
+    localStorage.setItem(
+      'pendingCompanyName',
+      data.companyName
+    );
+
+    localStorage.setItem(
+      'pendingCnpj',
+      data.cnpj
+    );
+
+    localStorage.setItem(
+      'pendingEmail',
+      data.email
+    );
+
+    setScreen('type-selection');
+  };
+
+  const handleTypeSelection = async (
+    type: UserType
+  ) => {
+    const company =
+      pendingRegisterData?.companyName ||
+      localStorage.getItem('pendingCompanyName') ||
+      '';
+
+    const cnpj =
+      pendingRegisterData?.cnpj ||
+      localStorage.getItem('pendingCnpj') ||
+      '';
+
+    if (!company || !cnpj) {
+      alert(
+        'Dados do cadastro não encontrados. Faça o cadastro novamente.'
+      );
+      setScreen('register');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        'http://127.0.0.1:5001/api/select-type',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            tipo: type,
+            companyName: company,
+            cnpj,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(
+          data.error ||
+            data.details ||
+            'Erro ao escolher o tipo da conta'
+        );
+        return;
+      }
+
+      localStorage.removeItem('pendingCompanyName');
+      localStorage.removeItem('pendingCnpj');
+      localStorage.removeItem('pendingEmail');
+
+      localStorage.removeItem('userType');
+      localStorage.removeItem('companyName');
+
+      setPendingRegisterData(null);
+      setUserType(null);
+      setCompanyName('');
+      setCurrentPage('dashboard');
+
+      alert(
+        'Conta criada com sucesso! Agora faça login.'
+      );
+
+      setScreen('login');
+    } catch (error) {
+      alert(
+        'Não foi possível conectar ao backend. Verifique se o Flask está rodando na porta 5001.'
+      );
+    }
+  };
+
   const handleNavigate = (
     page: string,
     groupId?: string
   ) => {
-
     setCurrentPage(page);
 
     if (groupId) {
-
       setSelectedGroupId(groupId);
     }
   };
 
-  /* LOGOUT */
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch(
+        'http://127.0.0.1:5001/api/logout',
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+    } catch (error) {
+      console.log('Logout local');
+    }
 
     localStorage.removeItem('companyName');
+    localStorage.removeItem('userType');
 
     setCompanyName('');
-
     setUserType(null);
-
     setCurrentPage('dashboard');
-
     setScreen('login');
   };
 
-  /* LOGIN */
   if (screen === 'login') {
-
     return (
       <LoginFormNew
         onLogin={handleLogin}
@@ -119,9 +234,7 @@ export default function App() {
     );
   }
 
-  /* REGISTRO */
   if (screen === 'register') {
-
     return (
       <RegisterFormNew
         onRegister={handleRegister}
@@ -132,9 +245,7 @@ export default function App() {
     );
   }
 
-  /* ESCOLHA DE TIPO */
   if (screen === 'type-selection') {
-
     return (
       <TypeSelection
         onSelectType={
@@ -144,16 +255,10 @@ export default function App() {
     );
   }
 
-  /* APP PRINCIPAL */
   if (screen === 'main' && userType) {
-
     return (
-
       <AppProvider>
-
-        <div className="flex h-screen bg-gray-50">
-
-          {/* SIDEBAR */}
+        <div className="flex h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300">
           <SidebarNew
             userType={userType}
             activePage={currentPage}
@@ -162,310 +267,253 @@ export default function App() {
             onLogout={handleLogout}
           />
 
-          {/* PÁGINAS */}
           <AnimatePresence mode="wait">
-
-            {/* DASHBOARD FORNECEDOR */}
             {currentPage === 'dashboard' &&
               userType === 'fornecedor' && (
+                <div
+                  key="supplier-dashboard"
+                  className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
+                >
+                  <SupplierDashboard
+                    userType={userType}
+                  />
+                </div>
+              )}
 
-              <div
-                key="supplier-dashboard"
-                className="flex-1"
-              >
-
-                <SupplierDashboard
-                  userType={userType}
-                />
-
-              </div>
-            )}
-
-            {/* DASHBOARD MERCADO */}
             {currentPage === 'dashboard' &&
               userType === 'mercado' && (
+                <div
+                  key="dashboard"
+                  className="flex-1 overflow-auto bg-gray-50 dark:bg-black transition-colors duration-300"
+                >
+                  <div className="p-8 min-h-screen">
+                    <div className="mb-8">
+                      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                        Dashboard
+                      </h1>
 
-              <div
-                key="dashboard"
-                className="flex-1 overflow-auto"
-              >
-
-                <div className="p-8">
-
-                  <div className="mb-8">
-
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                      Dashboard
-                    </h1>
-
-                    <p className="text-gray-600">
-                      Visão geral da sua conta
-                    </p>
-
-                  </div>
-
-                  {/* CARDS */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-
-                    {[
-                      {
-                        title: 'Pedidos Ativos',
-                        value: '8',
-                        icon: Clock,
-                        bgColor: 'bg-yellow-50',
-                        textColor: 'text-yellow-600',
-                      },
-                      {
-                        title: 'Participando',
-                        value: '12',
-                        icon: Users,
-                        bgColor: 'bg-blue-50',
-                        textColor: 'text-blue-600',
-                      },
-                      {
-                        title: 'Concluídos',
-                        value: '45',
-                        icon: CheckCircle,
-                        bgColor: 'bg-green-50',
-                        textColor: 'text-green-600',
-                      },
-                      {
-                        title: 'Total de Pedidos',
-                        value: '65',
-                        icon: ShoppingCart,
-                        bgColor: 'bg-purple-50',
-                        textColor: 'text-purple-600',
-                      },
-                    ].map((stat, index) => (
-
-                      <motion.div
-                        key={stat.title}
-                        initial={{
-                          opacity: 0,
-                          y: 20,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                        }}
-                        transition={{
-                          delay: index * 0.1,
-                        }}
-                        className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition"
-                      >
-
-                        <div className="flex items-center justify-between mb-4">
-
-                          <div
-                            className={`p-3 rounded-xl ${stat.bgColor}`}
-                          >
-
-                            <stat.icon
-                              className={`w-6 h-6 ${stat.textColor}`}
-                            />
-
-                          </div>
-
-                        </div>
-
-                        <h3 className="text-gray-600 text-sm mb-1">
-                          {stat.title}
-                        </h3>
-
-                        <p className="text-3xl font-bold text-gray-900">
-                          {stat.value}
-                        </p>
-
-                      </motion.div>
-                    ))}
-
-                  </div>
-
-                  {/* ATIVIDADE */}
-                  <motion.div
-                    initial={{
-                      opacity: 0,
-                      y: 20,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                    transition={{
-                      delay: 0.4,
-                    }}
-                    className="bg-white rounded-2xl shadow-sm p-6"
-                  >
-
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">
-                      Atividade Recente
-                    </h2>
-
-                    <div className="space-y-4">
-
-                      {[1, 2, 3, 4].map((item) => (
-
-                        <div
-                          key={item}
-                          className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition"
-                        >
-
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center">
-
-                            <ShoppingCart className="w-5 h-5 text-white" />
-
-                          </div>
-
-                          <div className="flex-1">
-
-                            <p className="font-semibold text-gray-900">
-                              Pedido de Arroz Tipo 1
-                            </p>
-
-                            <p className="text-sm text-gray-500">
-                              Supermercados Zona Sul • Há 2 horas
-                            </p>
-
-                          </div>
-
-                          <div className="text-right">
-
-                            <p className="font-semibold text-gray-900">
-                              150 un.
-                            </p>
-
-                            <p className="text-sm text-green-600">
-                              Ativo
-                            </p>
-
-                          </div>
-
-                        </div>
-                      ))}
-
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Visão geral da sua conta
+                      </p>
                     </div>
 
-                  </motion.div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                      {[
+                        {
+                          title: 'Pedidos Ativos',
+                          value: '8',
+                          icon: Clock,
+                          bgColor:
+                            'bg-yellow-50 dark:bg-blue-950',
+                          textColor:
+                            'text-yellow-600 dark:text-blue-300',
+                        },
+                        {
+                          title: 'Participando',
+                          value: '12',
+                          icon: Users,
+                          bgColor:
+                            'bg-blue-50 dark:bg-blue-950',
+                          textColor:
+                            'text-blue-600 dark:text-blue-300',
+                        },
+                        {
+                          title: 'Concluídos',
+                          value: '45',
+                          icon: CheckCircle,
+                          bgColor:
+                            'bg-green-50 dark:bg-green-950/40',
+                          textColor:
+                            'text-green-600 dark:text-green-300',
+                        },
+                        {
+                          title: 'Total de Pedidos',
+                          value: '65',
+                          icon: ShoppingCart,
+                          bgColor:
+                            'bg-purple-50 dark:bg-purple-950/40',
+                          textColor:
+                            'text-purple-600 dark:text-purple-300',
+                        },
+                      ].map((stat, index) => (
+                        <motion.div
+                          key={stat.title}
+                          initial={{
+                            opacity: 0,
+                            y: 20,
+                          }}
+                          animate={{
+                            opacity: 1,
+                            y: 0,
+                          }}
+                          transition={{
+                            delay: index * 0.1,
+                          }}
+                          className="bg-white dark:bg-gray-950 rounded-2xl p-6 shadow-sm hover:shadow-md transition border border-gray-100 dark:border-gray-800"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div
+                              className={`p-3 rounded-xl ${stat.bgColor}`}
+                            >
+                              <stat.icon
+                                className={`w-6 h-6 ${stat.textColor}`}
+                              />
+                            </div>
+                          </div>
 
+                          <h3 className="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                            {stat.title}
+                          </h3>
+
+                          <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                            {stat.value}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    <motion.div
+                      initial={{
+                        opacity: 0,
+                        y: 20,
+                      }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                      }}
+                      transition={{
+                        delay: 0.4,
+                      }}
+                      className="bg-white dark:bg-gray-950 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800 transition-colors duration-300"
+                    >
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                        Atividade Recente
+                      </h2>
+
+                      <div className="space-y-4">
+                        {[1, 2, 3, 4].map((item) => (
+                          <div
+                            key={item}
+                            className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900 transition"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 flex items-center justify-center">
+                              <ShoppingCart className="w-5 h-5 text-white" />
+                            </div>
+
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                Pedido de Arroz Tipo 1
+                              </p>
+
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Supermercados Zona Sul • Há 2 horas
+                              </p>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                150 un.
+                              </p>
+
+                              <p className="text-sm text-green-600 dark:text-green-300">
+                                Ativo
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
+              )}
 
-              </div>
-            )}
-
-            {/* FEED */}
             {currentPage === 'feed' && (
-
               <div
                 key="feed"
-                className="flex-1"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
               >
-
                 <SocialFeed
                   userType={userType}
                   onNavigate={handleNavigate}
                 />
-
               </div>
             )}
 
-            {/* CHAT */}
             {currentPage === 'chat' && (
-
-              <ChatPageNew
-                key="chat"
-                userType={userType}
-                groupId={selectedGroupId || '1'}
-              />
+              <div
+                key="chat-wrapper"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
+              >
+                <ChatPageNew
+                  key="chat"
+                  userType={userType}
+                  groupId={selectedGroupId || '1'}
+                />
+              </div>
             )}
 
-            {/* PEDIDOS */}
             {currentPage === 'pedidos' && (
-
               <div
                 key="pedidos"
-                className="flex-1"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
               >
-
                 <OrdersPage
                   userType={userType}
                 />
-
               </div>
             )}
 
-            {/* PRODUTOS */}
             {currentPage === 'produtos' && (
-
               <div
                 key="produtos"
-                className="flex-1"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
               >
-
                 {userType === 'fornecedor' ? (
-
                   <SupplierProductsPage
                     userType={userType}
                   />
-
                 ) : (
-
                   <ProductsPage
                     userType={userType}
                   />
                 )}
-
               </div>
             )}
 
-            {/* PAGAMENTOS */}
             {currentPage === 'pagamentos' && (
-
               <div
                 key="pagamentos"
-                className="flex-1"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
               >
-
                 <PaymentsPage
                   userType={userType}
                 />
-
               </div>
             )}
 
-            {/* PERFIL */}
             {currentPage === 'perfil' && (
-
               <div
                 key="perfil"
-                className="flex-1"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
               >
-
                 <CompanyProfile
                   userType={userType}
                 />
-
               </div>
             )}
 
-            {/* CONFIGURAÇÕES */}
             {currentPage === 'configuracoes' && (
-
               <div
                 key="configuracoes"
-                className="flex-1"
+                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
               >
-
                 <SettingsPage
                   userType={userType}
                 />
-
               </div>
             )}
-
           </AnimatePresence>
-
         </div>
-
       </AppProvider>
     );
   }

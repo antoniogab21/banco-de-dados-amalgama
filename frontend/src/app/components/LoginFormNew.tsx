@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Building2, Lock } from 'lucide-react';
-import logo from '../../assets/Subalterno.png';
+import { Mail, Lock } from 'lucide-react';
+
+import logoLight from '../../assets/Subalterno.png';
+import logoDark from '../../assets/SubalternoDark.png';
 
 interface LoginFormNewProps {
-  onLogin: (companyId: string) => void;
+  onLogin: (data: any) => void;
   onSwitchToRegister: () => void;
 }
 
@@ -12,111 +14,161 @@ export default function LoginFormNew({
   onLogin,
   onSwitchToRegister,
 }: LoginFormNewProps) {
-
-  const [companyName, setCompanyName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
-    if (companyName.trim() && password.trim()) {
+    setError('');
+    setLoading(true);
 
-      // SALVA O NOME DA EMPRESA
-      localStorage.setItem('companyName', companyName);
+    try {
+      const response = await fetch(
+        'http://127.0.0.1:5001/api/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
 
-      // LOGIN
-      onLogin(companyName);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(
+          data.error ||
+            data.details ||
+            'Erro ao fazer login'
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      onLogin(data);
+    } catch (err) {
+      setError(
+        'Não foi possível conectar ao backend. Verifique se o Flask está rodando na porta 5001.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-
+    <div className="min-h-screen flex items-center justify-center bg-background p-6 transition-colors duration-300">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
         className="w-full max-w-md"
       >
-
         {/* LOGO */}
         <div className="text-center mb-1">
-
-          {/* NOVA LOGO */}
           <div className="w-100 h-100 mx-auto mb-1 overflow-hidden flex items-center justify-center">
+            <img
+              src={logoLight}
+              alt="Logo Amalgama"
+              className="w-full h-full object-contain block dark:hidden"
+            />
 
-  <img
-    src={logo}
-    alt="Logo"
-    className="w-full h-full object-contain"
-  />
-
-</div>
-
+            <img
+              src={logoDark}
+              alt="Logo Amalgama modo escuro"
+              className="w-full h-full object-contain hidden dark:block"
+            />
+          </div>
         </div>
 
         {/* CARD */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <div className="bg-card border border-border rounded-2xl shadow-lg p-8 transition-colors duration-300">
+          <h2 className="text-2xl font-bold text-foreground mb-6">
             Entrar na conta
           </h2>
+
+          {error && (
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 text-sm font-semibold text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
 
           <form
             onSubmit={handleSubmit}
             className="space-y-5"
           >
-
-            {/* EMPRESA */}
+            {/* EMAIL */}
             <div>
-
               <label
-                htmlFor="companyName"
-                className="block text-sm font-semibold text-gray-700 mb-2"
+                htmlFor="email"
+                className="block text-sm font-semibold text-foreground mb-2"
               >
-                Nome da Empresa
+                Email
               </label>
 
               <div className="relative">
-
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-
-                  <Building2 className="h-5 w-5 text-gray-400" />
-
+                  <Mail className="h-5 w-5 text-muted-foreground" />
                 </div>
 
                 <input
-                  id="companyName"
-                  type="text"
-                  value={companyName}
+                  id="email"
+                  type="email"
+                  value={email}
                   onChange={(e) =>
-                    setCompanyName(e.target.value)
+                    setEmail(e.target.value)
                   }
-                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 outline-none transition text-gray-900"
-                  placeholder="Digite o nome da empresa"
+                  className="
+                    w-full
+                    pl-12
+                    pr-4
+                    py-3.5
+                    rounded-xl
+                    border-2
+                    border-border
+                    bg-background
+                    text-foreground
+                    focus:border-primary
+                    focus:ring-4
+                    focus:ring-primary/20
+                    outline-none
+                    transition
+                    placeholder:text-muted-foreground
+                  "
+                  placeholder="Digite seu email"
                   required
                 />
-
               </div>
             </div>
 
             {/* SENHA */}
             <div>
-
               <label
                 htmlFor="password"
-                className="block text-sm font-semibold text-gray-700 mb-2"
+                className="block text-sm font-semibold text-foreground mb-2"
               >
                 Senha
               </label>
 
               <div className="relative">
-
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-
-                  <Lock className="h-5 w-5 text-gray-400" />
-
+                  <Lock className="h-5 w-5 text-muted-foreground" />
                 </div>
 
                 <input
@@ -126,38 +178,72 @@ export default function LoginFormNew({
                   onChange={(e) =>
                     setPassword(e.target.value)
                   }
-                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-yellow-500 focus:ring-4 focus:ring-yellow-100 outline-none transition text-gray-900"
+                  className="
+                    w-full
+                    pl-12
+                    pr-4
+                    py-3.5
+                    rounded-xl
+                    border-2
+                    border-border
+                    bg-background
+                    text-foreground
+                    focus:border-primary
+                    focus:ring-4
+                    focus:ring-primary/20
+                    outline-none
+                    transition
+                    placeholder:text-muted-foreground
+                  "
                   placeholder="Digite sua senha"
                   required
                 />
-
               </div>
             </div>
 
             {/* BOTÃO */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{
+                scale: loading ? 1 : 1.02,
+              }}
+              whileTap={{
+                scale: loading ? 1 : 0.98,
+              }}
               type="submit"
-              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-4 rounded-xl transition shadow-lg hover:shadow-xl"
+              disabled={loading}
+              className="
+                w-full
+                bg-primary
+                hover:opacity-90
+                text-primary-foreground
+                font-bold
+                py-4
+                rounded-xl
+                transition
+                shadow-lg
+                disabled:opacity-60
+                disabled:cursor-not-allowed
+              "
             >
-              Entrar
+              {loading ? 'Entrando...' : 'Entrar'}
             </motion.button>
-
           </form>
 
           {/* REGISTRO */}
           <div className="mt-6 text-center">
-
             <button
               onClick={onSwitchToRegister}
-              className="text-gray-600 hover:text-yellow-600 font-semibold transition"
+              type="button"
+              className="
+                text-muted-foreground
+                hover:text-primary
+                font-semibold
+                transition
+              "
             >
               Criar conta
             </button>
-
           </div>
-
         </div>
       </motion.div>
     </div>

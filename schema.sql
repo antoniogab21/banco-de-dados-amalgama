@@ -1,6 +1,6 @@
 -- =========================================================
 -- AMALGAMA DATABASE
--- MYSQL PROFISSIONAL - VERSÃO FINAL
+-- MYSQL 8+
 -- =========================================================
 
 DROP DATABASE IF EXISTS amalgama;
@@ -12,7 +12,7 @@ COLLATE utf8mb4_unicode_ci;
 USE amalgama;
 
 -- =========================================================
--- USUÁRIOS
+-- USUARIO
 -- =========================================================
 
 CREATE TABLE usuario (
@@ -37,7 +37,7 @@ CREATE TABLE usuario (
 );
 
 -- =========================================================
--- EMPRESAS / MERCADOS
+-- EMPRESA
 -- =========================================================
 
 CREATE TABLE empresa (
@@ -73,7 +73,7 @@ CREATE TABLE empresa (
 );
 
 -- =========================================================
--- FORNECEDORES
+-- FORNECEDOR
 -- =========================================================
 
 CREATE TABLE fornecedor (
@@ -112,7 +112,7 @@ CREATE TABLE fornecedor (
 -- SEGUIR EMPRESAS
 -- =========================================================
 
-CREATE TABLE seguidores_empresa (
+CREATE TABLE seguidores (
 
     id INT AUTO_INCREMENT PRIMARY KEY,
 
@@ -154,7 +154,7 @@ CREATE TABLE grupo (
 );
 
 -- =========================================================
--- EMPRESAS NOS GRUPOS
+-- EMPRESA_GRUPO
 -- =========================================================
 
 CREATE TABLE empresa_grupo (
@@ -180,37 +180,6 @@ CREATE TABLE empresa_grupo (
 );
 
 -- =========================================================
--- MENSAGENS DOS GRUPOS
--- =========================================================
-
-CREATE TABLE mensagem_grupo (
-
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    grupo_id INT NOT NULL,
-
-    empresa_id INT NULL,
-
-    fornecedor_id INT NULL,
-
-    mensagem TEXT NOT NULL,
-
-    enviada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (grupo_id)
-    REFERENCES grupo(id)
-    ON DELETE CASCADE,
-
-    FOREIGN KEY (empresa_id)
-    REFERENCES empresa(id)
-    ON DELETE CASCADE,
-
-    FOREIGN KEY (fornecedor_id)
-    REFERENCES fornecedor(id)
-    ON DELETE CASCADE
-);
-
--- =========================================================
 -- PRODUTOS
 -- =========================================================
 
@@ -226,7 +195,7 @@ CREATE TABLE produto (
 
     preco DECIMAL(10,2) NOT NULL,
 
-    estoque INT NOT NULL DEFAULT 0,
+    estoque INT DEFAULT 0,
 
     imagem TEXT,
 
@@ -239,6 +208,30 @@ CREATE TABLE produto (
 
     FOREIGN KEY (fornecedor_id)
     REFERENCES fornecedor(id)
+    ON DELETE CASCADE
+);
+
+-- =========================================================
+-- MOVIMENTACAO ESTOQUE
+-- =========================================================
+
+CREATE TABLE movimentacao_estoque (
+
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    produto_id INT NOT NULL,
+
+    tipo ENUM(
+        'entrada',
+        'saida'
+    ) NOT NULL,
+
+    quantidade INT NOT NULL,
+
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (produto_id)
+    REFERENCES produto(id)
     ON DELETE CASCADE
 );
 
@@ -283,10 +276,10 @@ CREATE TABLE pedido (
 );
 
 -- =========================================================
--- ITENS DOS PEDIDOS
+-- ITEM PEDIDO
 -- =========================================================
 
-CREATE TABLE pedido_item (
+CREATE TABLE item_pedido (
 
     id INT AUTO_INCREMENT PRIMARY KEY,
 
@@ -294,7 +287,7 @@ CREATE TABLE pedido_item (
 
     produto_id INT NOT NULL,
 
-    quantidade_total INT NOT NULL,
+    quantidade INT NOT NULL,
 
     preco_unitario DECIMAL(10,2) NOT NULL,
 
@@ -310,27 +303,58 @@ CREATE TABLE pedido_item (
 );
 
 -- =========================================================
--- PARTICIPANTES DOS PEDIDOS
+-- PARTICIPACAO PEDIDO
 -- =========================================================
 
-CREATE TABLE pedido_participante (
+CREATE TABLE participacao_pedido (
 
     id INT AUTO_INCREMENT PRIMARY KEY,
 
-    pedido_item_id INT NOT NULL,
+    pedido_id INT NOT NULL,
 
     empresa_id INT NOT NULL,
 
     quantidade INT NOT NULL,
 
-    entrou_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (pedido_item_id)
-    REFERENCES pedido_item(id)
+    FOREIGN KEY (pedido_id)
+    REFERENCES pedido(id)
     ON DELETE CASCADE,
 
     FOREIGN KEY (empresa_id)
     REFERENCES empresa(id)
+    ON DELETE CASCADE
+);
+
+-- =========================================================
+-- MENSAGENS DOS GRUPOS
+-- =========================================================
+
+CREATE TABLE mensagem_grupo (
+
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    grupo_id INT NOT NULL,
+
+    empresa_id INT NULL,
+
+    fornecedor_id INT NULL,
+
+    mensagem TEXT NOT NULL,
+
+    enviada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (grupo_id)
+    REFERENCES grupo(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (empresa_id)
+    REFERENCES empresa(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (fornecedor_id)
+    REFERENCES fornecedor(id)
     ON DELETE CASCADE
 );
 
@@ -368,7 +392,7 @@ CREATE TABLE pagamento (
 );
 
 -- =========================================================
--- NOTIFICAÇÕES
+-- NOTIFICACOES
 -- =========================================================
 
 CREATE TABLE notificacao (
@@ -391,7 +415,7 @@ CREATE TABLE notificacao (
 );
 
 -- =========================================================
--- CONFIGURAÇÕES
+-- CONFIGURACOES
 -- =========================================================
 
 CREATE TABLE configuracao_usuario (
@@ -410,7 +434,7 @@ CREATE TABLE configuracao_usuario (
 );
 
 -- =========================================================
--- ÍNDICES
+-- INDICES
 -- =========================================================
 
 CREATE INDEX idx_usuario_email
@@ -440,36 +464,8 @@ ON pagamento(status);
 CREATE INDEX idx_mensagem_grupo
 ON mensagem_grupo(grupo_id);
 
--- =========================================================
--- OBSERVAÇÕES IMPORTANTES
--- =========================================================
+CREATE INDEX idx_seguidores_empresa
+ON seguidores(empresa_id);
 
--- 1. O CNPJ AGORA ACEITA APENAS 14 NÚMEROS
--- EXEMPLO:
--- 12345678000199
-
--- 2. NÃO SALVE SENHA NORMAL
--- SEMPRE SALVE SENHA CRIPTOGRAFADA (HASH)
-
--- EXEMPLO COM BCRYPT NO BACKEND:
--- bcrypt.hash(senha, 10)
-
--- 3. O LOGIN DEVE VALIDAR:
--- EMAIL + SENHA
-
--- NÃO:
--- NOME + QUALQUER SENHA
-
--- 4. O APP AGORA ESTÁ PREPARADO PARA:
--- ✔ login real
--- ✔ alterar senha
--- ✔ fornecedores
--- ✔ estoque
--- ✔ feed
--- ✔ pedidos coletivos
--- ✔ chat
--- ✔ seguir empresas
--- ✔ perfil de empresa
--- ✔ pagamentos
--- ✔ notificações
--- ✔ configurações
+CREATE INDEX idx_seguidores_seguindo
+ON seguidores(seguindo_empresa_id);

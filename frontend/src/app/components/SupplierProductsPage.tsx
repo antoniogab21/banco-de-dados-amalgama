@@ -6,7 +6,7 @@ import {
   Plus,
   X,
   Package,
-  Save
+  Save,
 } from 'lucide-react';
 
 interface SupplierProductsPageProps {
@@ -26,10 +26,10 @@ interface Product {
 export default function SupplierProductsPage({
   userType,
 }: SupplierProductsPageProps) {
-
   const [showModal, setShowModal] = useState(false);
 
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] =
+    useState<Product | null>(null);
 
   const [products, setProducts] = useState<Product[]>([
     {
@@ -69,8 +69,17 @@ export default function SupplierProductsPage({
     image: '📦',
   });
 
-  function handleAddProduct() {
+  function resetNewProduct() {
+    setNewProduct({
+      name: '',
+      description: '',
+      price: '',
+      stock: '',
+      image: '📦',
+    });
+  }
 
+  function handleAddProduct() {
     if (
       !newProduct.name ||
       !newProduct.description ||
@@ -92,20 +101,11 @@ export default function SupplierProductsPage({
     };
 
     setProducts([...products, product]);
-
-    setNewProduct({
-      name: '',
-      description: '',
-      price: '',
-      stock: '',
-      image: '📦',
-    });
-
+    resetNewProduct();
     setShowModal(false);
   }
 
   function handleDeleteProduct(id: number) {
-
     const confirmDelete = confirm(
       'Deseja remover este produto?'
     );
@@ -118,7 +118,6 @@ export default function SupplierProductsPage({
   }
 
   function handleSaveEdit() {
-
     if (!editingProduct) return;
 
     setProducts(
@@ -132,19 +131,23 @@ export default function SupplierProductsPage({
     setEditingProduct(null);
   }
 
+  const totalStock = products.reduce(
+    (acc, item) => acc + item.stock,
+    0
+  );
+
   return (
     <>
-      <div className="flex-1 overflow-auto bg-gray-50">
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300">
         <div className="p-8">
-
+          {/* HEADER */}
           <div className="flex items-center justify-between mb-8">
-
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
                 Meu Catálogo
               </h1>
 
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 Gerencie seus produtos disponíveis
               </p>
             </div>
@@ -153,93 +156,97 @@ export default function SupplierProductsPage({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg"
+              className="
+                flex items-center gap-2
+                bg-gradient-to-r from-yellow-400 to-yellow-500
+                dark:from-blue-800 dark:to-blue-950
+                hover:from-yellow-500 hover:to-yellow-600
+                dark:hover:from-blue-700 dark:hover:to-blue-900
+                text-white font-bold px-6 py-3 rounded-xl shadow-lg
+                transition
+              "
             >
               <Plus className="w-5 h-5" />
               Adicionar Produto
             </motion.button>
-
           </div>
 
+          {/* RESUMO */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <p className="text-sm text-gray-500">
+            <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm transition-colors duration-300">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Total de Produtos
               </p>
 
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {products.length}
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <p className="text-sm text-gray-500">
+            <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm transition-colors duration-300">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Estoque Total
               </p>
 
-              <p className="text-3xl font-bold text-gray-900">
-                {products.reduce(
-                  (acc, item) => acc + item.stock,
-                  0
-                )} un.
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                {totalStock} un.
               </p>
             </div>
-
           </div>
 
+          {/* PRODUTOS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
             {products.map((product) => (
-
               <div
                 key={product.id}
-                className="bg-white rounded-2xl shadow-sm p-6"
+                className="
+                  bg-white dark:bg-gray-950
+                  border border-gray-200 dark:border-gray-800
+                  rounded-2xl shadow-sm p-6
+                  transition-colors duration-300
+                "
               >
-
                 <div className="flex justify-between mb-4">
-
                   <div className="text-5xl">
                     {product.image}
                   </div>
 
                   <div className="flex gap-2">
-
                     <button
                       onClick={() =>
                         setEditingProduct(product)
                       }
-                      className="p-2 hover:bg-gray-100 rounded-lg"
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-lg transition"
+                      type="button"
                     >
-                      <Edit2 className="w-4 h-4 text-gray-600" />
+                      <Edit2 className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </button>
 
                     <button
                       onClick={() =>
                         handleDeleteProduct(product.id)
                       }
-                      className="p-2 hover:bg-red-50 rounded-lg"
+                      className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
+                      type="button"
                     >
-                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
                     </button>
-
                   </div>
                 </div>
 
-                <h3 className="font-bold text-lg">
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">
                   {product.name}
                 </h3>
 
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   {product.description}
                 </p>
 
-                <div className="space-y-2">
-
+                <div className="space-y-2 text-gray-700 dark:text-gray-300">
                   <div className="flex justify-between">
                     <span>Preço</span>
 
-                    <span className="font-bold text-yellow-600">
+                    <span className="font-bold text-yellow-600 dark:text-blue-300">
                       R$ {product.price.toFixed(2)}
                     </span>
                   </div>
@@ -247,40 +254,52 @@ export default function SupplierProductsPage({
                   <div className="flex justify-between">
                     <span>Estoque</span>
 
-                    <span>{product.stock} un.</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {product.stock} un.
+                    </span>
                   </div>
 
+                  <div className="flex justify-between">
+                    <span>Vendidos</span>
+
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {product.sold} un.
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
-
           </div>
         </div>
       </div>
 
       {/* MODAL NOVO PRODUTO */}
       {showModal && (
-
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-
-          <div className="bg-white rounded-3xl p-8 w-full max-w-lg">
-
-            <div className="flex justify-between mb-6">
-
-              <h2 className="text-2xl font-bold">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div
+            className="
+              bg-white dark:bg-gray-950
+              border border-gray-200 dark:border-gray-800
+              rounded-3xl p-8 w-full max-w-lg
+              text-gray-900 dark:text-white
+              shadow-2xl transition-colors duration-300
+            "
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Novo Produto
               </h2>
 
               <button
                 onClick={() => setShowModal(false)}
+                type="button"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition"
               >
-                <X />
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
-
             </div>
 
             <div className="space-y-4">
-
               <input
                 type="text"
                 placeholder="Nome"
@@ -291,7 +310,16 @@ export default function SupplierProductsPage({
                     name: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
               />
 
               <textarea
@@ -303,7 +331,17 @@ export default function SupplierProductsPage({
                     description: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
+                  rounded-xl px-4 py-3 outline-none resize-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
+                rows={3}
               />
 
               <input
@@ -316,7 +354,16 @@ export default function SupplierProductsPage({
                     price: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
               />
 
               <input
@@ -329,7 +376,16 @@ export default function SupplierProductsPage({
                     stock: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
               />
 
               <input
@@ -342,16 +398,33 @@ export default function SupplierProductsPage({
                     image: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  placeholder:text-gray-400 dark:placeholder:text-gray-500
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
               />
 
               <button
                 onClick={handleAddProduct}
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl"
+                type="button"
+                className="
+                  w-full
+                  bg-gradient-to-r from-yellow-400 to-yellow-500
+                  dark:from-blue-800 dark:to-blue-950
+                  hover:from-yellow-500 hover:to-yellow-600
+                  dark:hover:from-blue-700 dark:hover:to-blue-900
+                  text-white font-bold py-3 rounded-xl
+                  transition shadow-lg
+                "
               >
                 Salvar Produto
               </button>
-
             </div>
           </div>
         </div>
@@ -359,27 +432,31 @@ export default function SupplierProductsPage({
 
       {/* MODAL EDITAR */}
       {editingProduct && (
-
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-
-          <div className="bg-white rounded-3xl p-8 w-full max-w-lg">
-
-            <div className="flex justify-between mb-6">
-
-              <h2 className="text-2xl font-bold">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div
+            className="
+              bg-white dark:bg-gray-950
+              border border-gray-200 dark:border-gray-800
+              rounded-3xl p-8 w-full max-w-lg
+              text-gray-900 dark:text-white
+              shadow-2xl transition-colors duration-300
+            "
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Editar Produto
               </h2>
 
               <button
                 onClick={() => setEditingProduct(null)}
+                type="button"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition"
               >
-                <X />
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
-
             </div>
 
             <div className="space-y-4">
-
               <input
                 type="text"
                 value={editingProduct.name}
@@ -389,7 +466,15 @@ export default function SupplierProductsPage({
                     name: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
               />
 
               <textarea
@@ -400,21 +485,94 @@ export default function SupplierProductsPage({
                     description: e.target.value,
                   })
                 }
-                className="w-full border rounded-xl px-4 py-3"
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  rounded-xl px-4 py-3 outline-none resize-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
+                rows={3}
+              />
+
+              <input
+                type="number"
+                value={editingProduct.price}
+                onChange={(e) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    price: Number(e.target.value),
+                  })
+                }
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
+              />
+
+              <input
+                type="number"
+                value={editingProduct.stock}
+                onChange={(e) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    stock: Number(e.target.value),
+                  })
+                }
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
+              />
+
+              <input
+                type="text"
+                value={editingProduct.image}
+                onChange={(e) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    image: e.target.value,
+                  })
+                }
+                className="
+                  w-full border border-gray-300 dark:border-gray-700
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-white
+                  rounded-xl px-4 py-3 outline-none
+                  focus:border-yellow-500 dark:focus:border-blue-700
+                  focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                  transition
+                "
               />
 
               <button
                 onClick={handleSaveEdit}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl"
+                type="button"
+                className="
+                  w-full bg-green-600 hover:bg-green-700
+                  text-white font-bold py-3 rounded-xl
+                  transition shadow-lg flex items-center justify-center gap-2
+                "
               >
+                <Save className="w-5 h-5" />
                 Salvar Alterações
               </button>
-
             </div>
           </div>
         </div>
       )}
-
     </>
   );
 }

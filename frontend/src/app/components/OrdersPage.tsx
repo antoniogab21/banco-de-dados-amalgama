@@ -15,12 +15,11 @@ interface OrdersPageProps {
 export default function OrdersPage({
   userType,
 }: OrdersPageProps) {
+  const [openOrder, setOpenOrder] =
+    useState<number | null>(null);
 
-  const [openOrder, setOpenOrder] = useState<number | null>(null);
-
-  const [activeTab, setActiveTab] = useState<
-    'todos' | 'ativos' | 'concluidos'
-  >('todos');
+  const [activeTab, setActiveTab] =
+    useState<'todos' | 'ativos' | 'concluidos'>('todos');
 
   const [orders, setOrders] = useState([
     {
@@ -94,250 +93,232 @@ export default function OrdersPage({
   }
 
   return (
-    <>
-      <div className="flex-1 overflow-auto bg-gray-50">
-        <div className="p-8">
+    <div className="flex-1 overflow-auto bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300">
+      <div className="p-8">
+        {/* HEADER */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            Gerenciar Pedidos
+          </h1>
 
-          {/* HEADER */}
-          <div className="mb-8">
+          <p className="text-gray-600 dark:text-gray-400">
+            Controle todos os pedidos ativos e concluídos
+          </p>
+        </div>
 
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              Gerenciar Pedidos
-            </h1>
+        {/* TABS */}
+        <div className="flex gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('todos')}
+            className={`px-5 py-2 rounded-xl font-bold transition ${
+              activeTab === 'todos'
+                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 text-white shadow-lg'
+                : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800'
+            }`}
+          >
+            Todos
+          </button>
 
-            <p className="text-gray-600">
-              Controle todos os pedidos ativos e concluídos
-            </p>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ativos')}
+            className={`px-5 py-2 rounded-xl font-bold transition ${
+              activeTab === 'ativos'
+                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 text-white shadow-lg'
+                : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800'
+            }`}
+          >
+            Ativos
+          </button>
 
-          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('concluidos')}
+            className={`px-5 py-2 rounded-xl font-bold transition ${
+              activeTab === 'concluidos'
+                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 text-white shadow-lg'
+                : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800'
+            }`}
+          >
+            Concluídos
+          </button>
+        </div>
 
-          {/* TABS */}
-          <div className="flex gap-4 mb-6">
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('todos')}
-              className={`px-5 py-2 rounded-xl font-bold transition ${
-                activeTab === 'todos'
-                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
+        {/* LISTA */}
+        <div className="space-y-4">
+          {filteredOrders.map((order, index) => (
+            <motion.div
+              key={order.id}
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                delay: index * 0.05,
+              }}
+              className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-md transition p-4"
             >
-              Todos
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('ativos')}
-              className={`px-5 py-2 rounded-xl font-bold transition ${
-                activeTab === 'ativos'
-                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              Ativos
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('concluidos')}
-              className={`px-5 py-2 rounded-xl font-bold transition ${
-                activeTab === 'concluidos'
-                  ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              Concluídos
-            </button>
-
-          </div>
-
-          {/* LISTA */}
-          <div className="space-y-4">
-
-            {filteredOrders.map((order, index) => (
-
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-md transition p-4"
-              >
-
-                {/* TOPO */}
-                <div className="flex items-center justify-between">
-
-                  <div className="flex items-center gap-4">
-
-                    <div
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                        order.status === 'active'
-                          ? 'bg-gradient-to-br from-yellow-400 to-yellow-500'
-                          : 'bg-gradient-to-br from-green-400 to-green-500'
-                      }`}
-                    >
-                      <ShoppingCart className="w-5 h-5 text-white" />
-                    </div>
-
-                    <div>
-
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {order.product}
-                      </h3>
-
-                      <p className="text-sm text-gray-600">
-                        {order.supplier}
-                      </p>
-
-                    </div>
-
-                  </div>
-
+              {/* TOPO */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
                   <div
-                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center ${
                       order.status === 'active'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
+                        ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950'
+                        : 'bg-gradient-to-br from-green-400 to-green-500'
                     }`}
                   >
-                    {order.status === 'active' ? (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        Ativo
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4" />
-                        Concluído
-                      </div>
-                    )}
+                    <ShoppingCart className="w-5 h-5 text-white" />
                   </div>
 
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      {order.product}
+                    </h3>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {order.supplier}
+                    </p>
+                  </div>
                 </div>
 
-                {/* BOTÕES */}
-                <div className="mt-4 flex gap-3">
+                <div
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    order.status === 'active'
+                      ? 'bg-yellow-100 dark:bg-blue-950 text-yellow-700 dark:text-blue-300'
+                      : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300'
+                  }`}
+                >
+                  {order.status === 'active' ? (
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      Ativo
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" />
+                      Concluído
+                    </div>
+                  )}
+                </div>
+              </div>
 
+              {/* BOTÕES */}
+              <div className="mt-4 flex gap-3">
+                <motion.button
+                  type="button"
+                  whileHover={{
+                    scale: 1.02,
+                  }}
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+                  onClick={() =>
+                    setOpenOrder(
+                      openOrder === order.id
+                        ? null
+                        : order.id
+                    )
+                  }
+                  className="px-5 bg-gradient-to-r from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 hover:from-yellow-500 hover:to-yellow-600 dark:hover:from-blue-700 dark:hover:to-blue-900 text-white font-bold py-2 rounded-xl shadow-lg transition"
+                >
+                  {openOrder === order.id
+                    ? 'Fechar'
+                    : 'Ver Detalhes'}
+                </motion.button>
+
+                {order.status === 'active' && (
                   <motion.button
                     type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{
+                      scale: 1.02,
+                    }}
+                    whileTap={{
+                      scale: 0.98,
+                    }}
                     onClick={() =>
-                      setOpenOrder(
-                        openOrder === order.id
-                          ? null
-                          : order.id
-                      )
+                      handleCancelOrder(order.id)
                     }
-                    className="px-5 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold py-2 rounded-xl shadow-lg"
+                    className="px-5 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-xl border border-gray-100 dark:border-gray-800 transition"
                   >
-                    {openOrder === order.id
-                      ? 'Fechar'
-                      : 'Ver Detalhes'}
+                    Cancelar
                   </motion.button>
-
-                  {order.status === 'active' && (
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() =>
-                        handleCancelOrder(order.id)
-                      }
-                      className="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 rounded-xl"
-                    >
-                      Cancelar
-                    </motion.button>
-                  )}
-
-                </div>
-
-                {/* DETALHES */}
-                {openOrder === order.id && (
-
-                  <div className="mt-4 bg-gray-50 rounded-2xl p-4 space-y-4">
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                      <div className="bg-white rounded-xl p-4">
-
-                        <div className="flex items-center gap-2 text-gray-600 mb-2">
-
-                          <Package className="w-4 h-4" />
-
-                          <span className="text-sm">
-                            Quantidade Total
-                          </span>
-
-                        </div>
-
-                        <p className="font-bold text-gray-900 text-lg">
-                          {order.totalQuantity} un.
-                        </p>
-
-                      </div>
-
-                      <div className="bg-white rounded-xl p-4">
-
-                        <div className="flex items-center gap-2 text-gray-600 mb-2">
-
-                          <Clock className="w-4 h-4" />
-
-                          <span className="text-sm">
-                            Data de Criação
-                          </span>
-
-                        </div>
-
-                        <p className="font-bold text-gray-900 text-lg">
-                          {order.createdAt}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                    {/* PARTICIPANTES */}
-                    <div>
-
-                      <div className="flex items-center gap-2 text-gray-600 mb-3">
-
-                        <Users className="w-4 h-4" />
-
-                        <span className="text-sm font-semibold">
-                          Empresas Participantes
-                        </span>
-
-                      </div>
-
-                      <div className="space-y-2">
-
-                        {order.participants.map(
-                          (participant, index) => (
-
-                            <div
-                              key={index}
-                              className="bg-white rounded-xl px-4 py-3 font-semibold text-gray-800"
-                            >
-                              {participant}
-                            </div>
-                          )
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  </div>
                 )}
+              </div>
 
-              </motion.div>
-            ))}
+              {/* DETALHES */}
+              {openOrder === order.id && (
+                <div className="mt-4 bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 space-y-4 border border-gray-100 dark:border-gray-800">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white dark:bg-gray-950 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                        <Package className="w-4 h-4" />
 
-          </div>
+                        <span className="text-sm">
+                          Quantidade Total
+                        </span>
+                      </div>
+
+                      <p className="font-bold text-gray-900 dark:text-white text-lg">
+                        {order.totalQuantity} un.
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-950 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                        <Clock className="w-4 h-4" />
+
+                        <span className="text-sm">
+                          Data de Criação
+                        </span>
+                      </div>
+
+                      <p className="font-bold text-gray-900 dark:text-white text-lg">
+                        {order.createdAt}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* PARTICIPANTES */}
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-3">
+                      <Users className="w-4 h-4" />
+
+                      <span className="text-sm font-semibold">
+                        Empresas Participantes
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {order.participants.map(
+                        (participant, index) => (
+                          <div
+                            key={index}
+                            className="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-xl px-4 py-3 font-semibold text-gray-800 dark:text-gray-200"
+                          >
+                            {participant}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ))}
+
+          {filteredOrders.length === 0 && (
+            <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center text-gray-600 dark:text-gray-400">
+              Nenhum pedido encontrado.
+            </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
