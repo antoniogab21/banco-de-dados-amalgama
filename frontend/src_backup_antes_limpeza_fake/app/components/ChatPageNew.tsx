@@ -9,6 +9,15 @@ import {
   Wifi,
 } from 'lucide-react';
 
+const SOCKET_URL =
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+    ? 'http://127.0.0.1:5001'
+    : `${window.location.protocol}//${window.location.hostname.replace(
+        '-5173',
+        '-5001'
+      )}`;
+
 interface ChatPageNewProps {
   userType: 'mercado' | 'fornecedor';
   groupId?: string;
@@ -86,9 +95,9 @@ export default function ChatPageNew({
   }, [groupId]);
 
   useEffect(() => {
-    const socket = io('/', {
+    const socket = io(SOCKET_URL, {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
     });
 
@@ -103,6 +112,10 @@ export default function ChatPageNew({
     });
 
     socket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    socket.on('connect_error', () => {
       setIsConnected(false);
     });
 
@@ -131,6 +144,7 @@ export default function ChatPageNew({
 
       socket.off('connect');
       socket.off('disconnect');
+      socket.off('connect_error');
       socket.off('nova_mensagem');
       socket.disconnect();
       socketRef.current = null;
@@ -147,13 +161,10 @@ export default function ChatPageNew({
     if (!value) return '';
 
     try {
-      return new Date(value).toLocaleTimeString(
-        'pt-BR',
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      );
+      return new Date(value).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     } catch {
       return value;
     }
@@ -214,7 +225,6 @@ export default function ChatPageNew({
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300">
-      {/* HEADER */}
       <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 p-6 transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div>
@@ -241,7 +251,6 @@ export default function ChatPageNew({
         </div>
       </div>
 
-      {/* MENSAGENS */}
       <div className="flex-1 overflow-auto p-6 space-y-4 bg-gray-50 dark:bg-black transition-colors duration-300">
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 text-sm font-semibold text-red-700 dark:text-red-300">
@@ -274,9 +283,7 @@ export default function ChatPageNew({
             <div
               key={msg.id}
               className={`flex ${
-                msg.isOwn
-                  ? 'justify-end'
-                  : 'justify-start'
+                msg.isOwn ? 'justify-end' : 'justify-start'
               }`}
             >
               <div className="max-w-lg">
@@ -304,9 +311,7 @@ export default function ChatPageNew({
 
                 <span
                   className={`text-xs text-gray-400 mt-1 block ${
-                    msg.isOwn
-                      ? 'text-right'
-                      : 'text-left'
+                    msg.isOwn ? 'text-right' : 'text-left'
                   }`}
                 >
                   {formatTime(msg.enviada_em)}
@@ -318,7 +323,6 @@ export default function ChatPageNew({
         <div ref={bottomRef} />
       </div>
 
-      {/* INPUT */}
       <div className="bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 p-4 transition-colors duration-300">
         <div className="flex items-center gap-3">
           <button
@@ -331,9 +335,7 @@ export default function ChatPageNew({
           <input
             type="text"
             value={message}
-            onChange={(e) =>
-              setMessage(e.target.value)
-            }
+            onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !sending) {
                 handleSendMessage();
@@ -358,12 +360,8 @@ export default function ChatPageNew({
           />
 
           <motion.button
-            whileHover={{
-              scale: sending ? 1 : 1.05,
-            }}
-            whileTap={{
-              scale: sending ? 1 : 0.95,
-            }}
+            whileHover={{ scale: sending ? 1 : 1.05 }}
+            whileTap={{ scale: sending ? 1 : 0.95 }}
             onClick={handleSendMessage}
             disabled={sending}
             type="button"

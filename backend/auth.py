@@ -1,4 +1,7 @@
+import random
 import re
+from datetime import datetime, timedelta
+
 from flask import Blueprint, request, jsonify
 from flask_login import (
     login_user,
@@ -26,6 +29,16 @@ def load_user(user_id):
 
 def only_numbers(value):
     return re.sub(r'\D', '', value or '')
+
+
+def gerar_codigo_email():
+    return str(random.randint(100000, 999999))
+
+
+def definir_codigo_verificacao(user):
+    user.codigo_verificacao_email = gerar_codigo_email()
+    user.codigo_verificacao_expira_em = datetime.utcnow() + timedelta(minutes=15)
+    user.email_verificado = False
 
 
 def serialize_user(user):
@@ -62,6 +75,7 @@ def serialize_user(user):
         'email': user.email,
         'tipo': user.tipo,
         'tipo_definido': bool(user.tipo_definido),
+        'email_verificado': bool(user.email_verificado),
         'ativo': user.ativo,
         'perfil': perfil,
     }
@@ -122,7 +136,9 @@ def register():
             tipo_definido=False,
             ativo=True,
         )
+
         user.set_password(senha)
+        definir_codigo_verificacao(user)
 
         db.session.add(user)
         db.session.flush()
@@ -132,16 +148,23 @@ def register():
             receber_notificacoes=True,
             tema='light',
         )
-        db.session.add(config)
 
+        db.session.add(config)
         db.session.commit()
 
         login_user(user)
 
+        print(
+            f'[VERIFICAÇÃO EMAIL] Código de {user.email}: '
+            f'{user.codigo_verificacao_email}'
+        )
+
         return jsonify({
-            'message': 'cadastro criado, escolha o tipo da conta',
+            'message': 'cadastro criado, verifique seu email',
             'user': serialize_user(user),
             'pending_type_selection': True,
+            'pending_email_verification': True,
+            'verification_code_dev': user.codigo_verificacao_email,
             'cadastro_temp': {
                 'nome': nome,
                 'cnpj': cnpj,
@@ -159,6 +182,75 @@ def register():
             'error': 'erro ao criar conta',
             'details': str(error),
         }), 500
+
+
+@bp.route('/api/verify-email', methods=['POST'])
+@login_required
+def verify_email():
+    data = request.get_json(silent=True) or request.form
+
+    codigo = (data.get('codigo') or data.get('code') or '').strip()
+
+    if not codigo:
+        return jsonify({
+            'error': 'código obrigatório'
+        }), 400
+
+    if current_user.email_verificado:
+        return jsonify({
+            'message': 'email já verificado',
+            'user': serialize_user(current_user),
+        })
+
+    if not current_user.codigo_verificacao_email:
+        return jsonify({
+            'error': 'nenhum código ativo. solicite um novo código'
+        }), 400
+
+    if current_user.codigo_verificacao_expira_em:
+        if datetime.utcnow() > current_user.codigo_verificacao_expira_em:
+            return jsonify({
+                'error': 'código expirado. solicite um novo código'
+            }), 400
+
+    if codigo != current_user.codigo_verificacao_email:
+        return jsonify({
+            'error': 'código inválido'
+        }), 400
+
+    current_user.email_verificado = True
+    current_user.codigo_verificacao_email = None
+    current_user.codigo_verificacao_expira_em = None
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'email verificado com sucesso',
+        'user': serialize_user(current_user),
+    })
+
+
+@bp.route('/api/resend-verification-code', methods=['POST'])
+@login_required
+def resend_verification_code():
+    if current_user.email_verificado:
+        return jsonify({
+            'message': 'email já verificado',
+            'user': serialize_user(current_user),
+        })
+
+    definir_codigo_verificacao(current_user)
+    db.session.commit()
+
+    print(
+        f'[VERIFICAÇÃO EMAIL] Novo código de {current_user.email}: '
+        f'{current_user.codigo_verificacao_email}'
+    )
+
+    return jsonify({
+        'message': 'novo código enviado',
+        'verification_code_dev': current_user.codigo_verificacao_email,
+    })
 
 
 @bp.route('/api/select-type', methods=['POST'])
@@ -281,6 +373,7 @@ def api_login():
         'message': 'login realizado com sucesso',
         'user': serialize_user(user),
         'pending_type_selection': not bool(user.tipo_definido),
+        'pending_email_verification': not bool(user.email_verificado),
     })
 
 
@@ -290,6 +383,7 @@ def api_me():
     return jsonify({
         'user': serialize_user(current_user),
         'pending_type_selection': not bool(current_user.tipo_definido),
+        'pending_email_verification': not bool(current_user.email_verificado),
     })
 
 

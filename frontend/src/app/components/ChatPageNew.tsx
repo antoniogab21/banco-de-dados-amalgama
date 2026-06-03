@@ -9,6 +9,8 @@ import {
   Wifi,
 } from 'lucide-react';
 
+const SOCKET_URL = '';
+
 interface ChatPageNewProps {
   userType: 'mercado' | 'fornecedor';
   groupId?: string;
@@ -30,12 +32,25 @@ interface SocketMessagePayload {
   mensagem: ChatMessage;
 }
 
+interface CurrentUser {
+  id: number;
+  email: string;
+  tipo: 'mercado' | 'fornecedor';
+  perfil?: {
+    id?: number;
+    nome?: string;
+  } | null;
+}
+
 export default function ChatPageNew({
   userType,
   groupId = '1',
 }: ChatPageNewProps) {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +63,54 @@ export default function ChatPageNew({
     id: groupId,
     name: `Grupo ${groupId}`,
   };
+
+  function isOwnMessage(msg: ChatMessage) {
+    if (!currentUser) {
+      return Boolean(msg.isOwn);
+    }
+
+    if (currentUser.tipo === 'mercado') {
+      return (
+        msg.autor_tipo === 'mercado' &&
+        Number(msg.empresa_id) === Number(currentUser.perfil?.id)
+      );
+    }
+
+    if (currentUser.tipo === 'fornecedor') {
+      return (
+        msg.autor_tipo === 'fornecedor' &&
+        Number(msg.fornecedor_id) === Number(currentUser.perfil?.id)
+      );
+    }
+
+    return false;
+  }
+
+  function normalizeMessages(items: ChatMessage[]) {
+    return items.map((item) => ({
+      ...item,
+      isOwn: isOwnMessage(item),
+    }));
+  }
+
+  async function loadCurrentUser() {
+    const response = await fetch('/api/me', {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          data.details ||
+          'Erro ao buscar usuário logado'
+      );
+    }
+
+    setCurrentUser(data.user || data);
+  }
 
   async function loadMessages() {
     try {
@@ -82,13 +145,51 @@ export default function ChatPageNew({
   }
 
   useEffect(() => {
-    loadMessages();
+    async function startPage() {
+      try {
+        setLoading(true);
+        setError('');
+
+        await loadCurrentUser();
+
+        const response = await fetch(
+          `/api/chat/${groupId}/mensagens`,
+          {
+            method: 'GET',
+            credentials: 'include',
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(
+            data.error ||
+              data.details ||
+              'Erro ao carregar mensagens'
+          );
+          return;
+        }
+
+        setMessages(data);
+      } catch (err) {
+        setError('Não foi possível carregar as mensagens.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    startPage();
   }, [groupId]);
 
   useEffect(() => {
-    const socket = io('/', {
+    setMessages((prev) => normalizeMessages(prev));
+  }, [currentUser]);
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL, {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
     });
 
@@ -106,6 +207,11 @@ export default function ChatPageNew({
       setIsConnected(false);
     });
 
+    socket.on('connect_error', (err) => {
+      console.error('Erro Socket.IO:', err.message);
+      setIsConnected(false);
+    });
+
     socket.on('nova_mensagem', (payload: SocketMessagePayload) => {
       if (String(payload.grupo_id) !== String(groupId)) {
         return;
@@ -120,7 +226,12 @@ export default function ChatPageNew({
           return prev;
         }
 
-        return [...prev, payload.mensagem];
+        const novaMensagem = {
+          ...payload.mensagem,
+          isOwn: isOwnMessage(payload.mensagem),
+        };
+
+        return [...prev, novaMensagem];
       });
     });
 
@@ -131,11 +242,12 @@ export default function ChatPageNew({
 
       socket.off('connect');
       socket.off('disconnect');
+      socket.off('connect_error');
       socket.off('nova_mensagem');
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [groupId]);
+  }, [groupId, currentUser]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -147,13 +259,10 @@ export default function ChatPageNew({
     if (!value) return '';
 
     try {
-      return new Date(value).toLocaleTimeString(
-        'pt-BR',
-        {
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      );
+      return new Date(value).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     } catch {
       return value;
     }
@@ -201,7 +310,12 @@ export default function ChatPageNew({
           return prev;
         }
 
-        return [...prev, data.mensagem];
+        const novaMensagem = {
+          ...data.mensagem,
+          isOwn: isOwnMessage(data.mensagem),
+        };
+
+        return [...prev, novaMensagem];
       });
 
       setMessage('');
@@ -214,7 +328,6 @@ export default function ChatPageNew({
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300">
-      {/* HEADER */}
       <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 p-6 transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div>
@@ -241,7 +354,6 @@ export default function ChatPageNew({
         </div>
       </div>
 
-      {/* MENSAGENS */}
       <div className="flex-1 overflow-auto p-6 space-y-4 bg-gray-50 dark:bg-black transition-colors duration-300">
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 text-sm font-semibold text-red-700 dark:text-red-300">
@@ -270,55 +382,54 @@ export default function ChatPageNew({
         )}
 
         {!loading &&
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${
-                msg.isOwn
-                  ? 'justify-end'
-                  : 'justify-start'
-              }`}
-            >
-              <div className="max-w-lg">
-                {!msg.isOwn && (
-                  <div className="mb-1">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {msg.autor_nome || 'Usuário'}
-                    </span>
+          messages.map((msg) => {
+            const own = isOwnMessage(msg);
 
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 capitalize">
-                      {msg.autor_tipo || 'membro'}
-                    </span>
+            return (
+              <div
+                key={msg.id}
+                className={`flex ${
+                  own ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div className="max-w-lg">
+                  {!own && (
+                    <div className="mb-1">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {msg.autor_nome || 'Usuário'}
+                      </span>
+
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 capitalize">
+                        {msg.autor_tipo || 'membro'}
+                      </span>
+                    </div>
+                  )}
+
+                  <div
+                    className={`rounded-2xl px-4 py-3 shadow-sm border ${
+                      own
+                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 text-white rounded-tr-sm border-transparent'
+                        : 'bg-white dark:bg-gray-950 text-gray-900 dark:text-white rounded-tl-sm border-gray-200 dark:border-gray-800'
+                    }`}
+                  >
+                    <p>{msg.mensagem}</p>
                   </div>
-                )}
 
-                <div
-                  className={`rounded-2xl px-4 py-3 shadow-sm border ${
-                    msg.isOwn
-                      ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 text-white rounded-tr-sm border-transparent'
-                      : 'bg-white dark:bg-gray-950 text-gray-900 dark:text-white rounded-tl-sm border-gray-200 dark:border-gray-800'
-                  }`}
-                >
-                  <p>{msg.mensagem}</p>
+                  <span
+                    className={`text-xs text-gray-400 mt-1 block ${
+                      own ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {formatTime(msg.enviada_em)}
+                  </span>
                 </div>
-
-                <span
-                  className={`text-xs text-gray-400 mt-1 block ${
-                    msg.isOwn
-                      ? 'text-right'
-                      : 'text-left'
-                  }`}
-                >
-                  {formatTime(msg.enviada_em)}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
         <div ref={bottomRef} />
       </div>
 
-      {/* INPUT */}
       <div className="bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 p-4 transition-colors duration-300">
         <div className="flex items-center gap-3">
           <button
@@ -331,9 +442,7 @@ export default function ChatPageNew({
           <input
             type="text"
             value={message}
-            onChange={(e) =>
-              setMessage(e.target.value)
-            }
+            onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !sending) {
                 handleSendMessage();
@@ -358,12 +467,8 @@ export default function ChatPageNew({
           />
 
           <motion.button
-            whileHover={{
-              scale: sending ? 1 : 1.05,
-            }}
-            whileTap={{
-              scale: sending ? 1 : 0.95,
-            }}
+            whileHover={{ scale: sending ? 1 : 1.05 }}
+            whileTap={{ scale: sending ? 1 : 0.95 }}
             onClick={handleSendMessage}
             disabled={sending}
             type="button"

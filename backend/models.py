@@ -40,6 +40,22 @@ class Usuario(db.Model, UserMixin):
         default=False
     )
 
+    email_verificado = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
+
+    codigo_verificacao_email = db.Column(
+        db.String(6),
+        nullable=True
+    )
+
+    codigo_verificacao_expira_em = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
     ativo = db.Column(
         db.Boolean,
         default=True
