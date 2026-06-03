@@ -25,6 +25,20 @@ export default function RegisterFormNew({
 }: RegisterFormNewProps) {
   const [companyName, setCompanyName] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [consultandoCnpj, setConsultandoCnpj] =
+  useState(false);
+
+const [enderecoEmpresa, setEnderecoEmpresa] =
+  useState('');
+
+const [telefoneEmpresa, setTelefoneEmpresa] =
+  useState('');
+
+const [cidadeEmpresa, setCidadeEmpresa] =
+  useState('');
+
+const [estadoEmpresa, setEstadoEmpresa] =
+  useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -40,6 +54,70 @@ export default function RegisterFormNew({
   const limparCnpj = (value: string) => {
     return value.replace(/\D/g, '');
   };
+
+const buscarCnpj = async (
+  valorCnpj: string
+) => {
+  const cnpjLimpo =
+    valorCnpj.replace(/\D/g, '');
+
+  if (cnpjLimpo.length !== 14) {
+    return;
+  }
+
+  try {
+    setConsultandoCnpj(true);
+
+    const response = await fetch(
+      `/api/cnpj/${cnpjLimpo}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    if (data.nome) {
+      setCompanyName(data.nome);
+    }
+
+    if (data.telefone) {
+      setTelefoneEmpresa(
+        data.telefone
+      );
+    }
+
+    if (data.cidade) {
+      setCidadeEmpresa(
+        data.cidade
+      );
+    }
+
+    if (data.estado) {
+      setEstadoEmpresa(
+        data.estado
+      );
+    }
+
+const enderecoCompleto = [
+  data.logradouro,
+  data.numero,
+  data.bairro,
+]
+  .filter(Boolean)
+  .join(' - ');
+
+if (enderecoCompleto) {
+  setEnderecoEmpresa(enderecoCompleto);
+}
+
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setConsultandoCnpj(false);
+  }
+};
 
   const handleSubmit = async (
     e: React.FormEvent
@@ -95,6 +173,26 @@ export default function RegisterFormNew({
         'pendingEmail',
         email
       );
+
+localStorage.setItem(
+  'pendingTelefone',
+  telefoneEmpresa
+);
+
+localStorage.setItem(
+  'pendingEndereco',
+  enderecoEmpresa
+);
+
+localStorage.setItem(
+  'pendingCidade',
+  cidadeEmpresa
+);
+
+localStorage.setItem(
+  'pendingEstado',
+  estadoEmpresa
+);
 
       if (data.verification_code_dev) {
         setDevCode(data.verification_code_dev);
@@ -463,50 +561,87 @@ export default function RegisterFormNew({
                 />
               </div>
             </div>
+{/* CNPJ */}
+<div>
+  <label
+    htmlFor="cnpj"
+    className="block text-sm font-semibold text-foreground mb-2"
+  >
+    CNPJ
+  </label>
 
-            {/* CNPJ */}
-            <div>
-              <label
-                htmlFor="cnpj"
-                className="block text-sm font-semibold text-foreground mb-2"
-              >
-                CNPJ
-              </label>
+  <div className="relative">
+    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+      <FileText className="h-5 w-5 text-muted-foreground" />
+    </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                </div>
+    <input
+      id="cnpj"
+      type="text"
+      value={cnpj}
+      onChange={(e) => {
+        setCnpj(e.target.value);
 
-                <input
-                  id="cnpj"
-                  type="text"
-                  value={cnpj}
-                  onChange={(e) =>
-                    setCnpj(e.target.value)
-                  }
-                  className="
-                    w-full
-                    pl-12
-                    pr-4
-                    py-3
-                    rounded-xl
-                    border-2
-                    border-border
-                    bg-background
-                    text-foreground
-                    focus:border-primary
-                    focus:ring-4
-                    focus:ring-primary/20
-                    outline-none
-                    transition
-                    placeholder:text-muted-foreground
-                  "
-                  placeholder="00.000.000/0000-00"
-                  required
-                />
-              </div>
-            </div>
+        const limpo =
+          e.target.value.replace(/\D/g, '');
+
+        if (limpo.length === 14) {
+          buscarCnpj(limpo);
+        }
+      }}
+      className="
+        w-full
+        pl-12
+        pr-4
+        py-3
+        rounded-xl
+        border-2
+        border-border
+        bg-background
+        text-foreground
+        focus:border-primary
+        focus:ring-4
+        focus:ring-primary/20
+        outline-none
+        transition
+        placeholder:text-muted-foreground
+      "
+      placeholder="00.000.000/0000-00"
+      required
+    />
+  </div>
+
+  {consultandoCnpj && (
+    <p className="text-sm text-primary mt-2">
+      Consultando Receita Federal...
+    </p>
+  )}
+
+  {telefoneEmpresa && (
+    <p className="text-sm text-muted-foreground mt-2">
+      <strong>Telefone:</strong> {telefoneEmpresa}
+    </p>
+  )}
+
+  {cidadeEmpresa && (
+    <p className="text-sm text-muted-foreground">
+      <strong>Cidade:</strong> {cidadeEmpresa}
+    </p>
+  )}
+
+  {estadoEmpresa && (
+    <p className="text-sm text-muted-foreground">
+      <strong>Estado:</strong> {estadoEmpresa}
+    </p>
+  )}
+
+{enderecoEmpresa && (
+  <p className="text-sm text-muted-foreground">
+    <strong>Endereço:</strong> {enderecoEmpresa}
+  </p>
+)}
+
+</div>
 
             {/* EMAIL */}
             <div>

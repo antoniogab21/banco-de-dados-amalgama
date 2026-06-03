@@ -147,11 +147,31 @@ export default function App() {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          body: JSON.stringify({
-            tipo: type,
-            companyName: company,
-            cnpj,
-          }),
+         body: JSON.stringify({
+  tipo: type,
+  companyName: company,
+  cnpj,
+
+  telefone:
+    localStorage.getItem(
+      'pendingTelefone'
+    ),
+
+  endereco:
+    localStorage.getItem(
+      'pendingEndereco'
+    ),
+
+  cidade:
+    localStorage.getItem(
+      'pendingCidade'
+    ),
+
+  estado:
+    localStorage.getItem(
+      'pendingEstado'
+    ),
+}),
         }
       );
 
