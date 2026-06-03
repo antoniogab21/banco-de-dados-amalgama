@@ -1,6 +1,7 @@
 from flask import Flask, render_template
+
 from backend.config import Config
-from backend.extensions import db, migrate, login_manager, bcrypt
+from backend.extensions import db, migrate, login_manager, bcrypt, socketio
 from backend.auth import bp as auth_bp
 from backend.api import bp as api_bp
 
@@ -11,6 +12,7 @@ def create_app():
         template_folder='templates',
         static_folder='static'
     )
+
     app.config.from_object(Config)
 
     # initialize extensions
@@ -18,12 +20,13 @@ def create_app():
     migrate.init_app(app, db)
     login_manager.init_app(app)
     bcrypt.init_app(app)
+    socketio.init_app(app)
 
     # register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
 
-    # preserve existing routes (render templates) so frontend behavior doesn't change
+    # preserve existing routes
     @app.route('/')
     def login():
         return render_template('login.html')
@@ -61,4 +64,10 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    socketio.run(
+        app,
+        host='0.0.0.0',
+        port=5001,
+        debug=True,
+        allow_unsafe_werkzeug=True
+    )

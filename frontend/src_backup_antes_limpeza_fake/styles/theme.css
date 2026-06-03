@@ -1,0 +1,206 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+
+  /* ==========================
+     TEMA CLARO (AMARELO)
+     ========================== */
+
+  --background: #ffffff;
+  --foreground: #111827;
+
+  --card: #ffffff;
+  --card-foreground: #111827;
+
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  --primary: #FDB022;
+  --primary-foreground: #ffffff;
+
+  --secondary: #F3F4F6;
+  --secondary-foreground: #111827;
+
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+
+  --accent: #FECA57;
+  --accent-foreground: #111827;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #E5E7EB;
+  --input: #ffffff;
+  --input-background: #F9FAFB;
+
+  --switch-background: #D1D5DB;
+
+  --ring: #FDB022;
+
+  --radius: 0.625rem;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+
+  --sidebar-primary: #FDB022;
+  --sidebar-primary-foreground: #ffffff;
+
+  --sidebar-accent: #F3F4F6;
+  --sidebar-accent-foreground: #111827;
+
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #FDB022;
+
+  --chart-1: #FDB022;
+  --chart-2: #3B82F6;
+  --chart-3: #10B981;
+  --chart-4: #8B5CF6;
+  --chart-5: #EF4444;
+}
+
+.dark {
+
+  /* ==========================
+     TEMA ESCURO (AZUL)
+     ========================== */
+
+  --background: #000000;
+  --foreground: #ffffff;
+
+  --card: #111827;
+  --card-foreground: #ffffff;
+
+  --popover: #111827;
+  --popover-foreground: #ffffff;
+
+  --primary: #1E3A8A;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1F2937;
+  --secondary-foreground: #ffffff;
+
+  --muted: #1F2937;
+  --muted-foreground: #9CA3AF;
+
+  --accent: #1E40AF;
+  --accent-foreground: #ffffff;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #374151;
+
+  --input: #1F2937;
+  --input-background: #111827;
+
+  --switch-background: #4B5563;
+
+  --ring: #1E3A8A;
+
+  --sidebar: #111827;
+  --sidebar-foreground: #ffffff;
+
+  --sidebar-primary: #1E3A8A;
+  --sidebar-primary-foreground: #ffffff;
+
+  --sidebar-accent: #1F2937;
+  --sidebar-accent-foreground: #ffffff;
+
+  --sidebar-border: #374151;
+  --sidebar-ring: #1E3A8A;
+
+  --chart-1: #1E3A8A;
+  --chart-2: #2563EB;
+  --chart-3: #10B981;
+  --chart-4: #8B5CF6;
+  --chart-5: #EF4444;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+
+  --color-switch-background: var(--switch-background);
+
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  label,
+  button,
+  input {
+    color: inherit;
+  }
+}
