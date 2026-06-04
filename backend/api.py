@@ -955,6 +955,333 @@ def configuracao_usuario(usuario_id):
     return jsonify({'message': 'updated'})
 
 
+# -----------------------
+# Dashboards
+# -----------------------
+
+def calcular_total_pedido(pedido):
+    total = 0
+
+    for item in pedido.itens:
+        total += float(item.preco_unitario) * int(item.quantidade)
+
+    return total
+
+
+@bp.route('/dashboard/mercado', methods=['GET'])
+@login_required
+def dashboard_mercado():
+    if current_user.tipo != 'mercado':
+        return jsonify({
+            'error': 'apenas mercados podem acessar esta dashboard'
+        }), 403
+
+    if not current_user.empresa:
+        return jsonify({
+            'error': 'perfil de mercado não encontrado'
+        }), 404
+
+    empresa_id = current_user.empresa.id
+
+    pedidos = Pedido.query.filter(
+        db.or_(
+            Pedido.empresa_criadora_id == empresa_id,
+            Pedido.participacoes.any(
+                ParticipacaoPedido.empresa_id == empresa_id
+            ),
+        ),
+        Pedido.status != 'cancelado'
+    ).order_by(
+        Pedido.criado_em.desc()
+    ).all()
+
+    pedidos_criados_por_mim = []
+    pedidos_participando = []
+    pedidos_concluidos = []
+
+    gasto_criados_por_mim = 0
+    gasto_participando = 0
+    gasto_concluidos = 0
+
+    fornecedores_gastos = {}
+    atividade_recente = []
+
+    for pedido in pedidos:
+        item = pedido.itens[0] if pedido.itens else None
+
+        quantidade_empresa = 0
+
+        for part in pedido.participacoes:
+            if part.empresa_id == empresa_id:
+                quantidade_empresa = int(part.quantidade)
+
+        valor_empresa = 0
+
+        if item and quantidade_empresa > 0:
+            valor_empresa = float(item.preco_unitario) * quantidade_empresa
+
+        foi_criado_por_mim = pedido.empresa_criadora_id == empresa_id
+        estou_participando = (
+            pedido.empresa_criadora_id != empresa_id and
+            quantidade_empresa > 0
+        )
+        esta_concluido = pedido.status == 'finalizado'
+        esta_ativo = pedido.status == 'ativo'
+
+        if foi_criado_por_mim and esta_ativo:
+            pedidos_criados_por_mim.append(pedido)
+            gasto_criados_por_mim += valor_empresa
+
+        if estou_participando and esta_ativo:
+            pedidos_participando.append(pedido)
+            gasto_participando += valor_empresa
+
+        if esta_concluido:
+            pedidos_concluidos.append(pedido)
+            gasto_concluidos += valor_empresa
+
+        if valor_empresa > 0:
+            nome_fornecedor = (
+                pedido.fornecedor.nome
+                if pedido.fornecedor
+                else 'Fornecedor'
+            )
+
+            fornecedores_gastos[nome_fornecedor] = fornecedores_gastos.get(
+                nome_fornecedor,
+                0
+            ) + valor_empresa
+
+        atividade_recente.append({
+            'id': pedido.id,
+            'titulo': pedido.titulo,
+            'fornecedor_nome': pedido.fornecedor.nome if pedido.fornecedor else None,
+            'produto_nome': item.produto.nome if item and item.produto else None,
+            'quantidade': quantidade_empresa,
+            'valor': valor_empresa,
+            'status': pedido.status,
+            'criado_em': pedido.criado_em.isoformat() if pedido.criado_em else None,
+            'foi_criado_por_mim': foi_criado_por_mim,
+            'estou_participando': estou_participando,
+            'esta_concluido': esta_concluido,
+            'tipo_dashboard': (
+                'concluido' if esta_concluido
+                else 'criado' if foi_criado_por_mim
+                else 'participando' if estou_participando
+                else 'outro'
+            ),
+        })
+
+    fornecedores_mais_usados = [
+        {
+            'nome': nome,
+            'valor': valor,
+        }
+        for nome, valor in sorted(
+            fornecedores_gastos.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:5]
+    ]
+
+    gasto_total = (
+        gasto_criados_por_mim +
+        gasto_participando +
+        gasto_concluidos
+    )
+
+    return jsonify({
+        'pedidos_criados_por_mim': len(pedidos_criados_por_mim),
+        'pedidos_ativos': len(pedidos_criados_por_mim),
+        'participando': len(pedidos_participando),
+        'concluidos': len(pedidos_concluidos),
+        'total_pedidos': len(pedidos),
+        'gasto_total': gasto_total,
+        'gastos': {
+            'criados_por_mim': gasto_criados_por_mim,
+            'participando': gasto_participando,
+            'concluidos': gasto_concluidos,
+            'total': gasto_total,
+        },
+        'atividade_recente': atividade_recente[:10],
+        'fornecedores_mais_usados': fornecedores_mais_usados,
+    })
+
+    fornecedores_gastos = {}
+
+    for pedido in pedidos:
+        nome_fornecedor = pedido.fornecedor.nome if pedido.fornecedor else 'Fornecedor'
+
+        for part in pedido.participacoes:
+            if part.empresa_id == empresa_id:
+                item = pedido.itens[0] if pedido.itens else None
+
+                if item:
+                    fornecedores_gastos[nome_fornecedor] = fornecedores_gastos.get(
+                        nome_fornecedor,
+                        0
+                    ) + float(item.preco_unitario) * int(part.quantidade)
+
+    fornecedores_mais_usados = [
+        {
+            'nome': nome,
+            'valor': valor,
+        }
+        for nome, valor in sorted(
+            fornecedores_gastos.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:5]
+    ]
+
+    return jsonify({
+        'pedidos_ativos': len(pedidos_ativos),
+        'participando': len(participando),
+        'concluidos': len(pedidos_concluidos),
+        'total_pedidos': len(pedidos),
+        'gasto_total': gasto_total,
+        'atividade_recente': atividade_recente,
+        'fornecedores_mais_usados': fornecedores_mais_usados,
+    })
+
+
+@bp.route('/dashboard/fornecedor', methods=['GET'])
+@login_required
+def dashboard_fornecedor():
+    if current_user.tipo != 'fornecedor':
+        return jsonify({
+            'error': 'apenas fornecedores podem acessar esta dashboard'
+        }), 403
+
+    if not current_user.fornecedor:
+        return jsonify({
+            'error': 'perfil de fornecedor não encontrado'
+        }), 404
+
+    fornecedor_id = current_user.fornecedor.id
+
+    pedidos = Pedido.query.filter_by(
+        fornecedor_id=fornecedor_id
+    ).order_by(
+        Pedido.criado_em.desc()
+    ).all()
+
+    pedidos_pendentes = [
+        p for p in pedidos
+        if p.status == 'ativo'
+    ]
+
+    pedidos_confirmados = [
+        p for p in pedidos
+        if p.status == 'finalizado'
+    ]
+
+    total_itens = 0
+    receita_total = 0
+    clientes = {}
+    produtos = {}
+    cidades = {}
+
+    for pedido in pedidos:
+        item = pedido.itens[0] if pedido.itens else None
+
+        for part in pedido.participacoes:
+            quantidade = int(part.quantidade)
+            total_itens += quantidade
+
+            if item:
+                valor = float(item.preco_unitario) * quantidade
+                receita_total += valor
+
+                produto_nome = item.produto.nome if item.produto else pedido.titulo
+
+                produtos[produto_nome] = produtos.get(
+                    produto_nome,
+                    0
+                ) + quantidade
+
+            if part.empresa:
+                clientes[part.empresa.nome] = clientes.get(
+                    part.empresa.nome,
+                    0
+                ) + quantidade
+
+                localidade = 'Não informado'
+
+                if part.empresa.cidade and part.empresa.estado:
+                    localidade = f'{part.empresa.cidade}/{part.empresa.estado}'
+                elif part.empresa.cidade:
+                    localidade = part.empresa.cidade
+                elif part.empresa.estado:
+                    localidade = part.empresa.estado
+
+                cidades[localidade] = cidades.get(
+                    localidade,
+                    0
+                ) + quantidade
+
+    pedidos_recentes = []
+
+    for pedido in pedidos[:5]:
+        item = pedido.itens[0] if pedido.itens else None
+
+        pedidos_recentes.append({
+            'id': pedido.id,
+            'titulo': pedido.titulo,
+            'empresa_nome': pedido.empresa_criadora.nome if pedido.empresa_criadora else None,
+            'quantidade': item.quantidade if item else 0,
+            'valor': calcular_total_pedido(pedido),
+            'status': pedido.status,
+            'criado_em': pedido.criado_em.isoformat() if pedido.criado_em else None,
+        })
+
+    produtos_mais_vendidos = [
+        {
+            'nome': nome,
+            'quantidade': quantidade,
+        }
+        for nome, quantidade in sorted(
+            produtos.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:5]
+    ]
+
+    clientes_top = [
+        {
+            'nome': nome,
+            'quantidade': quantidade,
+        }
+        for nome, quantidade in sorted(
+            clientes.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:5]
+    ]
+
+    localidades_top = [
+        {
+            'nome': nome,
+            'quantidade': quantidade,
+        }
+        for nome, quantidade in sorted(
+            cidades.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:5]
+    ]
+
+    return jsonify({
+        'pedidos_pendentes': len(pedidos_pendentes),
+        'pedidos_confirmados': len(pedidos_confirmados),
+        'total_itens': total_itens,
+        'receita_total': receita_total,
+        'pedidos_recentes': pedidos_recentes,
+        'produtos_mais_vendidos': produtos_mais_vendidos,
+        'clientes_top': clientes_top,
+        'localidades_top': localidades_top,
+    })
+
 @socketio.on('entrar_grupo')
 def socket_entrar_grupo(data):
     grupo_id = data.get('grupo_id')

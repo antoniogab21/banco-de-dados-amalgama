@@ -22,6 +22,7 @@ import SocialFeed from './components/SocialFeed';
 import PaymentsPage from './components/PaymentsPage';
 import SettingsPage from './components/SettingsPage';
 import SidebarNew from './components/SidebarNew';
+import DashboardNew from './components/DashboardNew';
 
 type Screen =
   | 'login'
@@ -325,151 +326,14 @@ estado:
               )}
 
             {currentPage === 'dashboard' &&
-              userType === 'mercado' && (
-                <div
-                  key="dashboard"
-                  className="flex-1 overflow-auto bg-gray-50 dark:bg-black transition-colors duration-300"
-                >
-                  <div className="p-8 min-h-screen">
-                    <div className="mb-8">
-                      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                        Dashboard
-                      </h1>
-
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Visão geral da sua conta
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                      {[
-                        {
-                          title: 'Pedidos Ativos',
-                          value: '8',
-                          icon: Clock,
-                          bgColor:
-                            'bg-yellow-50 dark:bg-blue-950',
-                          textColor:
-                            'text-yellow-600 dark:text-blue-300',
-                        },
-                        {
-                          title: 'Participando',
-                          value: '12',
-                          icon: Users,
-                          bgColor:
-                            'bg-blue-50 dark:bg-blue-950',
-                          textColor:
-                            'text-blue-600 dark:text-blue-300',
-                        },
-                        {
-                          title: 'Concluídos',
-                          value: '45',
-                          icon: CheckCircle,
-                          bgColor:
-                            'bg-green-50 dark:bg-green-950/40',
-                          textColor:
-                            'text-green-600 dark:text-green-300',
-                        },
-                        {
-                          title: 'Total de Pedidos',
-                          value: '65',
-                          icon: ShoppingCart,
-                          bgColor:
-                            'bg-purple-50 dark:bg-purple-950/40',
-                          textColor:
-                            'text-purple-600 dark:text-purple-300',
-                        },
-                      ].map((stat, index) => (
-                        <motion.div
-                          key={stat.title}
-                          initial={{
-                            opacity: 0,
-                            y: 20,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                          }}
-                          transition={{
-                            delay: index * 0.1,
-                          }}
-                          className="bg-white dark:bg-gray-950 rounded-2xl p-6 shadow-sm hover:shadow-md transition border border-gray-100 dark:border-gray-800"
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <div
-                              className={`p-3 rounded-xl ${stat.bgColor}`}
-                            >
-                              <stat.icon
-                                className={`w-6 h-6 ${stat.textColor}`}
-                              />
-                            </div>
-                          </div>
-
-                          <h3 className="text-gray-600 dark:text-gray-400 text-sm mb-1">
-                            {stat.title}
-                          </h3>
-
-                          <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                            {stat.value}
-                          </p>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: 20,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                      }}
-                      transition={{
-                        delay: 0.4,
-                      }}
-                      className="bg-white dark:bg-gray-950 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-800 transition-colors duration-300"
-                    >
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        Atividade Recente
-                      </h2>
-
-                      <div className="space-y-4">
-                        {[1, 2, 3, 4].map((item) => (
-                          <div
-                            key={item}
-                            className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900 transition"
-                          >
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500 dark:from-blue-800 dark:to-blue-950 flex items-center justify-center">
-                              <ShoppingCart className="w-5 h-5 text-white" />
-                            </div>
-
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                Pedido de Arroz Tipo 1
-                              </p>
-
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Supermercados Zona Sul • Há 2 horas
-                              </p>
-                            </div>
-
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                150 un.
-                              </p>
-
-                              <p className="text-sm text-green-600 dark:text-green-300">
-                                Ativo
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-                </div>
-              )}
+  userType === 'mercado' && (
+    <div
+      key="dashboard"
+      className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
+    >
+      <DashboardNew userType={userType} />
+    </div>
+  )}
 
             {currentPage === 'feed' && (
               <div
