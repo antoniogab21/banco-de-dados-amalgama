@@ -36,6 +36,10 @@ interface RegisterData {
   cnpj: string;
   email: string;
   password: string;
+  telefone?: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
 }
 
 export default function App() {
@@ -96,119 +100,139 @@ export default function App() {
     setScreen('main');
   };
 
-  const handleRegister = (data: RegisterData) => {
-    setPendingRegisterData(data);
+ const handleRegister = (data: RegisterData) => {
+  setPendingRegisterData(data);
 
-    localStorage.setItem(
-      'pendingCompanyName',
-      data.companyName
+  localStorage.setItem(
+    'pendingCompanyName',
+    data.companyName
+  );
+
+  localStorage.setItem(
+    'pendingCnpj',
+    data.cnpj
+  );
+
+  localStorage.setItem(
+    'pendingEmail',
+    data.email
+  );
+
+  localStorage.setItem(
+    'pendingTelefone',
+    data.telefone || ''
+  );
+
+  localStorage.setItem(
+    'pendingEndereco',
+    data.endereco || ''
+  );
+
+  localStorage.setItem(
+    'pendingCidade',
+    data.cidade || ''
+  );
+
+  localStorage.setItem(
+    'pendingEstado',
+    data.estado || ''
+  );
+
+  setScreen('type-selection');
+};
+
+ const handleTypeSelection = async (
+  type: UserType
+) => {
+  const company =
+    pendingRegisterData?.companyName ||
+    localStorage.getItem('pendingCompanyName') ||
+    '';
+
+  const cnpj =
+    pendingRegisterData?.cnpj ||
+    localStorage.getItem('pendingCnpj') ||
+    '';
+
+  if (!company || !cnpj) {
+    alert(
+      'Dados do cadastro não encontrados. Faça o cadastro novamente.'
+    );
+    setScreen('register');
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      '/api/select-type',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          tipo: type,
+          companyName: company,
+          cnpj,
+          telefone:
+  pendingRegisterData?.telefone ||
+  localStorage.getItem('pendingTelefone') ||
+  '',
+endereco:
+  pendingRegisterData?.endereco ||
+  localStorage.getItem('pendingEndereco') ||
+  '',
+cidade:
+  pendingRegisterData?.cidade ||
+  localStorage.getItem('pendingCidade') ||
+  '',
+estado:
+  pendingRegisterData?.estado ||
+  localStorage.getItem('pendingEstado') ||
+  '',
+        }),
+      }
     );
 
-    localStorage.setItem(
-      'pendingCnpj',
-      data.cnpj
-    );
+    const data = await response.json();
 
-    localStorage.setItem(
-      'pendingEmail',
-      data.email
-    );
-
-    setScreen('type-selection');
-  };
-
-  const handleTypeSelection = async (
-    type: UserType
-  ) => {
-    const company =
-      pendingRegisterData?.companyName ||
-      localStorage.getItem('pendingCompanyName') ||
-      '';
-
-    const cnpj =
-      pendingRegisterData?.cnpj ||
-      localStorage.getItem('pendingCnpj') ||
-      '';
-
-    if (!company || !cnpj) {
+    if (!response.ok) {
       alert(
-        'Dados do cadastro não encontrados. Faça o cadastro novamente.'
+        data.error ||
+          data.details ||
+          'Erro ao escolher o tipo da conta'
       );
-      setScreen('register');
       return;
     }
 
-    try {
-      const response = await fetch(
-        '/api/select-type',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-         body: JSON.stringify({
-  tipo: type,
-  companyName: company,
-  cnpj,
+    localStorage.removeItem('pendingCompanyName');
+    localStorage.removeItem('pendingCnpj');
+    localStorage.removeItem('pendingEmail');
+    localStorage.removeItem('pendingTelefone');
+    localStorage.removeItem('pendingEndereco');
+    localStorage.removeItem('pendingCidade');
+    localStorage.removeItem('pendingEstado');
 
-  telefone:
-    localStorage.getItem(
-      'pendingTelefone'
-    ),
+    localStorage.removeItem('userType');
+    localStorage.removeItem('companyName');
 
-  endereco:
-    localStorage.getItem(
-      'pendingEndereco'
-    ),
+    setPendingRegisterData(null);
+    setUserType(null);
+    setCompanyName('');
+    setCurrentPage('dashboard');
 
-  cidade:
-    localStorage.getItem(
-      'pendingCidade'
-    ),
+    alert(
+      'Conta criada com sucesso! Agora faça login.'
+    );
 
-  estado:
-    localStorage.getItem(
-      'pendingEstado'
-    ),
-}),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(
-          data.error ||
-            data.details ||
-            'Erro ao escolher o tipo da conta'
-        );
-        return;
-      }
-
-      localStorage.removeItem('pendingCompanyName');
-      localStorage.removeItem('pendingCnpj');
-      localStorage.removeItem('pendingEmail');
-
-      localStorage.removeItem('userType');
-      localStorage.removeItem('companyName');
-
-      setPendingRegisterData(null);
-      setUserType(null);
-      setCompanyName('');
-      setCurrentPage('dashboard');
-
-      alert(
-        'Conta criada com sucesso! Agora faça login.'
-      );
-
-      setScreen('login');
-    } catch (error) {
-      alert(
-        'Não foi possível conectar ao backend. Verifique se o Flask está rodando na porta 5001.'
-      );
-    }
-  };
+    setScreen('login');
+  } catch (error) {
+    alert(
+      'Não foi possível conectar ao backend. Verifique se o Flask está rodando na porta 5001.'
+    );
+  }
+};
 
   const handleNavigate = (
     page: string,

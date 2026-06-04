@@ -15,6 +15,10 @@ interface RegisterFormNewProps {
     cnpj: string;
     email: string;
     password: string;
+    telefone?: string;
+    endereco?: string;
+    cidade?: string;
+    estado?: string;
   }) => void;
   onBack: () => void;
 }
@@ -139,11 +143,15 @@ if (enderecoCompleto) {
           },
           credentials: 'include',
           body: JSON.stringify({
-            companyName,
-            cnpj: cnpjLimpo,
-            email,
-            password,
-          }),
+  companyName,
+  cnpj: cnpjLimpo,
+  email,
+  password,
+  telefone: telefoneEmpresa,
+  endereco: enderecoEmpresa,
+  cidade: cidadeEmpresa,
+  estado: estadoEmpresa,
+}),
         }
       );
 
@@ -203,12 +211,16 @@ localStorage.setItem(
         return;
       }
 
-      onRegister({
-        companyName,
-        cnpj: cnpjLimpo,
-        email,
-        password,
-      });
+     onRegister({
+  companyName,
+  cnpj: cnpjLimpo,
+  email,
+  password,
+  telefone: telefoneEmpresa,
+  endereco: enderecoEmpresa,
+  cidade: cidadeEmpresa,
+  estado: estadoEmpresa,
+});
     } catch (err) {
       setError(
         'Não foi possível conectar ao backend. Verifique se o Flask está rodando na porta 5001.'
@@ -256,11 +268,15 @@ localStorage.setItem(
       }
 
       onRegister({
-        companyName,
-        cnpj: cnpjLimpo,
-        email,
-        password,
-      });
+  companyName,
+  cnpj: cnpjLimpo,
+  email,
+  password,
+  telefone: telefoneEmpresa,
+  endereco: enderecoEmpresa,
+  cidade: cidadeEmpresa,
+  estado: estadoEmpresa,
+});
     } catch (err) {
       setError(
         'Não foi possível verificar o e-mail. Tente novamente.'
