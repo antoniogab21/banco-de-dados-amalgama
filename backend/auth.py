@@ -1,6 +1,7 @@
 import random
 import re
 from datetime import datetime, timedelta
+import requests
 
 from flask import Blueprint, request, jsonify
 from flask_login import (
@@ -30,6 +31,28 @@ def load_user(user_id):
 def only_numbers(value):
     return re.sub(r'\D', '', value or '')
 
+def validar_cnpj(cnpj):
+    try:
+        response = requests.get(
+            f'https://www.receitaws.com.br/v1/cnpj/{cnpj}',
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            return False, 'Não foi possível validar o CNPJ'
+
+        data = response.json()
+
+        if data.get('status') == 'ERROR':
+            return False, data.get(
+                'message',
+                'CNPJ inválido'
+            )
+
+        return True, data
+
+    except Exception as error:
+        return False, str(error)
 
 def gerar_codigo_email():
     return str(random.randint(100000, 999999))
@@ -123,11 +146,30 @@ def register():
             'error': 'CNPJ deve conter exatamente 14 números'
         }), 400
 
-    if Usuario.query.filter_by(email=email).first():
-        return jsonify({'error': 'email já cadastrado'}), 400
+    cnpj_valido, resultado_cnpj = validar_cnpj(cnpj)
 
-    if Empresa.query.filter_by(cnpj=cnpj).first() or Fornecedor.query.filter_by(cnpj=cnpj).first():
-        return jsonify({'error': 'CNPJ já cadastrado'}), 400
+    if not cnpj_valido:
+        return jsonify({
+            'error': f'CNPJ inválido: {resultado_cnpj}'
+        }), 400
+
+    nome_receita = resultado_cnpj.get('nome')
+    telefone_receita = resultado_cnpj.get('telefone')
+    cidade_receita = resultado_cnpj.get('municipio')
+    estado_receita = resultado_cnpj.get('uf')
+
+    logradouro = resultado_cnpj.get('logradouro', '')
+    numero = resultado_cnpj.get('numero', '')
+    bairro = resultado_cnpj.get('bairro', '')
+
+    endereco_receita = (
+        f'{logradouro}, {numero} - {bairro}'
+    ).strip()
+
+    if Usuario.query.filter_by(email=email).first():
+        return jsonify({
+            'error': 'email já cadastrado'
+        }), 400
 
     try:
         user = Usuario(
@@ -291,6 +333,12 @@ def select_type():
             'error': 'CNPJ deve conter exatamente 14 números'
         }), 400
 
+    cnpj_valido, resultado_cnpj = validar_cnpj(cnpj)
+
+    if not cnpj_valido:
+        return jsonify({
+            'error': f'CNPJ inválido: {resultado_cnpj}'
+        }), 400
     if current_user.tipo_definido:
         return jsonify({
             'error': 'tipo da conta já foi definido'
@@ -341,6 +389,33 @@ def select_type():
             'error': 'erro ao definir tipo da conta',
             'details': str(error),
         }), 500
+
+@bp.route('/api/cnpj/<cnpj>', methods=['GET'])
+def consultar_cnpj(cnpj):
+    cnpj = only_numbers(cnpj)
+
+    if len(cnpj) != 14:
+        return jsonify({
+            'error': 'CNPJ inválido'
+        }), 400
+
+    valido, dados = validar_cnpj(cnpj)
+
+    if not valido:
+        return jsonify({
+            'error': dados
+        }), 400
+
+    return jsonify({
+        'nome': dados.get('nome'),
+        'telefone': dados.get('telefone'),
+        'cidade': dados.get('municipio'),
+        'estado': dados.get('uf'),
+        'logradouro': dados.get('logradouro'),
+        'numero': dados.get('numero'),
+        'bairro': dados.get('bairro'),
+        'email': dados.get('email'),
+    })
 
 
 @bp.route('/api/login', methods=['POST'])
