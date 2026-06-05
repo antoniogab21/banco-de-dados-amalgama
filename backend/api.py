@@ -603,6 +603,45 @@ def criar_pedido():
             'error': f'quantidade solicitada maior que o estoque disponível ({produto.estoque} unidades)'
         }), 400
 
+    pedido_existente = Pedido.query.join(
+        ItemPedido,
+        ItemPedido.pedido_id == Pedido.id
+    ).filter(
+        Pedido.empresa_criadora_id == current_user.empresa.id,
+        Pedido.status == 'ativo',
+        ItemPedido.produto_id == produto.id
+    ).first()
+
+    if pedido_existente:
+        participacao = ParticipacaoPedido.query.filter_by(
+            pedido_id=pedido_existente.id,
+            empresa_id=current_user.empresa.id,
+        ).first()
+
+        if not participacao:
+            participacao = ParticipacaoPedido(
+                pedido_id=pedido_existente.id,
+                empresa_id=current_user.empresa.id,
+                quantidade=0,
+            )
+            db.session.add(participacao)
+
+        item_existente = pedido_existente.itens[0] if pedido_existente.itens else None
+
+        participacao.quantidade = int(participacao.quantidade) + quantidade
+
+        if item_existente:
+            item_existente.quantidade = int(item_existente.quantidade) + quantidade
+
+        produto.estoque = produto.estoque - quantidade
+
+        db.session.commit()
+
+        return jsonify({
+            'message': 'quantidade adicionada ao pedido existente',
+            'pedido': serialize_pedido(pedido_existente),
+        }), 200
+
     grupo = Grupo.query.get(grupo_id)
 
     if not grupo:
@@ -697,6 +736,45 @@ def listar_pedidos():
         for p in pedidos
     ])
 
+@bp.route('/pedidos/disponiveis', methods=['GET'])
+@login_required
+def listar_pedidos_disponiveis():
+    if current_user.tipo != 'mercado':
+        return jsonify({
+            'error': 'apenas mercados podem visualizar pedidos disponíveis'
+        }), 403
+
+    if not current_user.empresa:
+        return jsonify({
+            'error': 'perfil de mercado não encontrado'
+        }), 404
+
+    empresa_id = current_user.empresa.id
+
+    pedidos = Pedido.query.filter(
+        Pedido.status == 'ativo',
+        Pedido.empresa_criadora_id != empresa_id
+    ).order_by(
+        Pedido.criado_em.desc()
+    ).all()
+
+    pedidos_disponiveis = []
+
+    for pedido in pedidos:
+        item = pedido.itens[0] if pedido.itens else None
+
+        if not item or not item.produto:
+            continue
+
+        if item.produto.estoque <= 0:
+            continue
+
+        pedidos_disponiveis.append(pedido)
+
+    return jsonify([
+        serialize_pedido(p)
+        for p in pedidos_disponiveis
+    ])
 
 @bp.route('/pedidos/<int:pedido_id>/participar', methods=['POST'])
 @login_required
@@ -794,6 +872,11 @@ def participar_pedido(pedido_id):
 def cancelar_pedido(pedido_id):
     pedido = Pedido.query.get_or_404(pedido_id)
 
+    if pedido.status == 'finalizado':
+        return jsonify({
+            'error': 'pedido finalizado não pode ser cancelado'
+        }), 400
+
     if current_user.tipo == 'mercado':
         if not current_user.empresa or pedido.empresa_criadora_id != current_user.empresa.id:
             return jsonify({'error': 'acesso negado'}), 403
@@ -804,9 +887,14 @@ def cancelar_pedido(pedido_id):
             'pedido': serialize_pedido(pedido),
         })
 
+    total_participacoes = 0
+
+    for part in pedido.participacoes:
+        total_participacoes += int(part.quantidade)
+
     for item in pedido.itens:
         if item.produto:
-            item.produto.estoque = item.produto.estoque + item.quantidade
+            item.produto.estoque = item.produto.estoque + total_participacoes
 
     pedido.status = 'cancelado'
 
@@ -1104,43 +1192,6 @@ def dashboard_mercado():
             'total': gasto_total,
         },
         'atividade_recente': atividade_recente[:10],
-        'fornecedores_mais_usados': fornecedores_mais_usados,
-    })
-
-    fornecedores_gastos = {}
-
-    for pedido in pedidos:
-        nome_fornecedor = pedido.fornecedor.nome if pedido.fornecedor else 'Fornecedor'
-
-        for part in pedido.participacoes:
-            if part.empresa_id == empresa_id:
-                item = pedido.itens[0] if pedido.itens else None
-
-                if item:
-                    fornecedores_gastos[nome_fornecedor] = fornecedores_gastos.get(
-                        nome_fornecedor,
-                        0
-                    ) + float(item.preco_unitario) * int(part.quantidade)
-
-    fornecedores_mais_usados = [
-        {
-            'nome': nome,
-            'valor': valor,
-        }
-        for nome, valor in sorted(
-            fornecedores_gastos.items(),
-            key=lambda item: item[1],
-            reverse=True
-        )[:5]
-    ]
-
-    return jsonify({
-        'pedidos_ativos': len(pedidos_ativos),
-        'participando': len(participando),
-        'concluidos': len(pedidos_concluidos),
-        'total_pedidos': len(pedidos),
-        'gasto_total': gasto_total,
-        'atividade_recente': atividade_recente,
         'fornecedores_mais_usados': fornecedores_mais_usados,
     })
 
