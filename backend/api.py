@@ -518,6 +518,22 @@ def serialize_pedido(p):
     for part in p.participacoes:
         total_quantidade += part.quantidade
 
+    minha_participacao = None
+
+    if current_user.is_authenticated and current_user.tipo == 'mercado':
+        if current_user.empresa:
+            minha_participacao = ParticipacaoPedido.query.filter_by(
+                pedido_id=p.id,
+                empresa_id=current_user.empresa.id,
+            ).first()
+
+    is_lider = (
+        current_user.is_authenticated and
+        current_user.tipo == 'mercado' and
+        current_user.empresa and
+        p.empresa_criadora_id == current_user.empresa.id
+    )
+
     return {
         'id': p.id,
         'grupo_id': p.grupo_id,
@@ -526,6 +542,14 @@ def serialize_pedido(p):
         'fornecedor_nome': p.fornecedor.nome if p.fornecedor else None,
         'empresa_criadora_id': p.empresa_criadora_id,
         'empresa_criadora_nome': p.empresa_criadora.nome if p.empresa_criadora else None,
+        'is_lider': is_lider,
+        'minha_participacao': (
+            {
+                'id': minha_participacao.id,
+                'quantidade': minha_participacao.quantidade,
+            }
+            if minha_participacao else None
+        ),
         'titulo': p.titulo,
         'status': p.status,
         'criado_em': p.criado_em.isoformat() if p.criado_em else None,
@@ -749,31 +773,15 @@ def listar_pedidos_disponiveis():
             'error': 'perfil de mercado não encontrado'
         }), 404
 
-    empresa_id = current_user.empresa.id
-
     pedidos = Pedido.query.filter(
-        Pedido.status == 'ativo',
-        Pedido.empresa_criadora_id != empresa_id
+        Pedido.status == 'ativo'
     ).order_by(
         Pedido.criado_em.desc()
     ).all()
 
-    pedidos_disponiveis = []
-
-    for pedido in pedidos:
-        item = pedido.itens[0] if pedido.itens else None
-
-        if not item or not item.produto:
-            continue
-
-        if item.produto.estoque <= 0:
-            continue
-
-        pedidos_disponiveis.append(pedido)
-
     return jsonify([
         serialize_pedido(p)
-        for p in pedidos_disponiveis
+        for p in pedidos
     ])
 
 @bp.route('/pedidos/<int:pedido_id>/participar', methods=['POST'])
@@ -819,25 +827,23 @@ def participar_pedido(pedido_id):
 
     first_item = pedido.itens[0] if pedido.itens else None
 
-    if first_item and first_item.produto:
-        if quantidade > first_item.produto.estoque:
-            return jsonify({
-                'error': f'quantidade solicitada maior que o estoque disponível ({first_item.produto.estoque} unidades)'
-            }), 400
+    if not first_item or not first_item.produto:
+        return jsonify({
+            'error': 'produto do pedido não encontrado'
+        }), 404
 
     part = ParticipacaoPedido.query.filter_by(
         pedido_id=pedido_id,
         empresa_id=current_user.empresa.id,
     ).first()
 
-    quantidade_anterior = part.quantidade if part else 0
+    quantidade_anterior = int(part.quantidade) if part else 0
     diferenca = quantidade - quantidade_anterior
 
-    if first_item and first_item.produto:
-        if diferenca > first_item.produto.estoque:
-            return jsonify({
-                'error': f'quantidade solicitada maior que o estoque disponível ({first_item.produto.estoque} unidades)'
-            }), 400
+    if diferenca > 0 and diferenca > first_item.produto.estoque:
+        return jsonify({
+            'error': f'quantidade adicional maior que o estoque disponível ({first_item.produto.estoque} unidades)'
+        }), 400
 
     if part:
         part.quantidade = quantidade
@@ -850,8 +856,7 @@ def participar_pedido(pedido_id):
 
         db.session.add(part)
 
-    if first_item and first_item.produto:
-        first_item.produto.estoque = first_item.produto.estoque - diferenca
+    first_item.produto.estoque = first_item.produto.estoque - diferenca
 
     db.session.commit()
 
@@ -866,6 +871,55 @@ def participar_pedido(pedido_id):
         'pedido': serialize_pedido(pedido),
     }), 201
 
+@bp.route('/pedidos/<int:pedido_id>/sair', methods=['POST'])
+@login_required
+def sair_pedido(pedido_id):
+    if current_user.tipo != 'mercado':
+        return jsonify({
+            'error': 'apenas mercados podem sair de pedidos'
+        }), 403
+
+    if not current_user.empresa:
+        return jsonify({
+            'error': 'perfil de mercado não encontrado'
+        }), 404
+
+    pedido = Pedido.query.get_or_404(pedido_id)
+
+    if pedido.status != 'ativo':
+        return jsonify({
+            'error': 'não é possível cancelar participação de um pedido que não está ativo'
+        }), 400
+
+    if pedido.empresa_criadora_id == current_user.empresa.id:
+        return jsonify({
+            'error': 'o líder do pedido não pode cancelar participação; cancele o pedido inteiro'
+        }), 400
+
+    participacao = ParticipacaoPedido.query.filter_by(
+        pedido_id=pedido.id,
+        empresa_id=current_user.empresa.id,
+    ).first()
+
+    if not participacao:
+        return jsonify({
+            'error': 'sua empresa não está participando deste pedido'
+        }), 404
+
+    quantidade_removida = int(participacao.quantidade)
+
+    item = pedido.itens[0] if pedido.itens else None
+
+    if item and item.produto:
+        item.produto.estoque = item.produto.estoque + quantidade_removida
+
+    db.session.delete(participacao)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'participação cancelada com sucesso',
+        'pedido': serialize_pedido(pedido),
+    })
 
 @bp.route('/pedidos/<int:pedido_id>/cancelar', methods=['POST'])
 @login_required

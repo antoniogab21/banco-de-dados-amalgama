@@ -371,22 +371,23 @@ estado:
               </div>
             )}
 
-            {currentPage === 'produtos' && (
-              <div
-                key="produtos"
-                className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
-              >
-                {userType === 'fornecedor' ? (
-                  <SupplierProductsPage
-                    userType={userType}
-                  />
-                ) : (
-                  <ProductsPage
-                    userType={userType}
-                  />
-                )}
-              </div>
-            )}
+           {currentPage === 'produtos' && (
+  <div
+    key="produtos"
+    className="flex-1 bg-gray-50 dark:bg-black transition-colors duration-300"
+  >
+    {userType === 'fornecedor' ? (
+      <SupplierProductsPage
+        userType={userType}
+      />
+    ) : (
+      <ProductsPage
+        userType={userType}
+        onNavigate={handleNavigate}
+      />
+    )}
+  </div>
+)}
 
             {currentPage === 'pagamentos' && (
               <div

@@ -6,10 +6,13 @@ import {
   ShoppingCart,
   X,
   CheckCircle,
+  Edit2,
+  ExternalLink,
 } from 'lucide-react';
 
 interface ProductsPageProps {
   userType: 'mercado' | 'fornecedor';
+  onNavigate?: (page: string, groupId?: string) => void;
 }
 
 interface Product {
@@ -24,11 +27,34 @@ interface Product {
   ativo: boolean;
 }
 
+interface PedidoItem {
+  id: number;
+  produto_id: number;
+  produto_nome?: string | null;
+  produto_imagem?: string | null;
+  quantidade: number;
+  preco_unitario: number;
+}
+
+interface MinhaParticipacao {
+  id: number;
+  quantidade: number;
+}
+
+interface Pedido {
+  id: number;
+  status: string;
+  is_lider?: boolean;
+  minha_participacao?: MinhaParticipacao | null;
+  itens: PedidoItem[];
+}
+
 export default function ProductsPage({
   userType,
+  onNavigate,
 }: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [orderedProductIds, setOrderedProductIds] = useState<number[]>([]);
+  const [orders, setOrders] = useState<Pedido[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,32 +62,52 @@ export default function ProductsPage({
   const [selectedProduct, setSelectedProduct] =
     useState<Product | null>(null);
 
+  const [selectedPedido, setSelectedPedido] =
+    useState<Pedido | null>(null);
+
   const [quantity, setQuantity] = useState('1');
 
   const [creatingOrder, setCreatingOrder] =
     useState(false);
 
-  async function loadProducts() {
+  async function loadProductsAndOrders() {
     try {
       setLoading(true);
       setError('');
 
-      const response = await fetch('/api/produtos', {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const [productsResponse, ordersResponse] =
+        await Promise.all([
+          fetch('/api/produtos', {
+            method: 'GET',
+            credentials: 'include',
+          }),
+          fetch('/api/pedidos', {
+            method: 'GET',
+            credentials: 'include',
+          }),
+        ]);
 
-      const data = await response.json();
+      const productsData = await productsResponse.json();
+      const ordersData = await ordersResponse.json();
 
-      if (!response.ok) {
+      if (!productsResponse.ok) {
         setError(
-          data.error ||
+          productsData.error ||
             'Erro ao carregar produtos'
         );
         return;
       }
 
-      setProducts(data);
+      if (!ordersResponse.ok) {
+        setError(
+          ordersData.error ||
+            'Erro ao carregar pedidos'
+        );
+        return;
+      }
+
+      setProducts(productsData);
+      setOrders(ordersData);
     } catch (err) {
       setError(
         'Não foi possível carregar os produtos.'
@@ -72,30 +118,54 @@ export default function ProductsPage({
   }
 
   useEffect(() => {
-    loadProducts();
+    loadProductsAndOrders();
   }, []);
 
-  function openCreateOrder(product: Product) {
-    if (orderedProductIds.includes(product.id)) {
-      return;
-    }
+  function getActiveOrderForProduct(productId: number) {
+    return orders.find((order) => {
+      if (order.status !== 'ativo') {
+        return false;
+      }
 
-    if (product.estoque <= 0) {
+      const hasProduct = order.itens?.some(
+        (item) => item.produto_id === productId
+      );
+
+      const hasMyParticipation = Boolean(
+        order.minha_participacao
+      );
+
+      return hasProduct && hasMyParticipation;
+    });
+  }
+
+  function openCreateOrEditOrder(
+    product: Product,
+    pedido?: Pedido
+  ) {
+    if (product.estoque <= 0 && !pedido) {
       alert('Este produto está sem estoque disponível.');
       return;
     }
 
     setSelectedProduct(product);
-    setQuantity('1');
+    setSelectedPedido(pedido || null);
+
+    if (pedido?.minha_participacao?.quantidade) {
+      setQuantity(String(pedido.minha_participacao.quantidade));
+    } else {
+      setQuantity('1');
+    }
   }
 
   function closeCreateOrder() {
     setSelectedProduct(null);
+    setSelectedPedido(null);
     setQuantity('1');
     setCreatingOrder(false);
   }
 
-  async function handleCreateOrder() {
+  async function handleCreateOrEditOrder() {
     if (!selectedProduct) return;
 
     const quantidade = Number(quantity);
@@ -105,7 +175,7 @@ export default function ProductsPage({
       return;
     }
 
-    if (quantidade > selectedProduct.estoque) {
+    if (!selectedPedido && quantidade > selectedProduct.estoque) {
       alert(
         `Quantidade maior que o estoque disponível. Estoque atual: ${selectedProduct.estoque} un.`
       );
@@ -115,18 +185,28 @@ export default function ProductsPage({
     try {
       setCreatingOrder(true);
 
-      const response = await fetch('/api/pedidos', {
+      const url = selectedPedido
+        ? `/api/pedidos/${selectedPedido.id}/participar`
+        : '/api/pedidos';
+
+      const body = selectedPedido
+        ? {
+            quantidade,
+          }
+        : {
+            produto_id: selectedProduct.id,
+            quantidade,
+            grupo_id: 1,
+            titulo: selectedProduct.nome,
+          };
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          produto_id: selectedProduct.id,
-          quantidade,
-          grupo_id: 1,
-          titulo: selectedProduct.nome,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -135,38 +215,19 @@ export default function ProductsPage({
         alert(
           data.error ||
             data.details ||
-            'Erro ao criar pedido'
+            'Erro ao salvar pedido'
         );
         return;
       }
 
-      setOrderedProductIds((prev) => {
-        if (prev.includes(selectedProduct.id)) {
-          return prev;
-        }
-
-        return [
-          ...prev,
-          selectedProduct.id,
-        ];
-      });
-
-      setProducts((prev) =>
-        prev.map((product) =>
-          product.id === selectedProduct.id
-            ? {
-                ...product,
-                estoque:
-                  product.estoque - quantidade < 0
-                    ? 0
-                    : product.estoque - quantidade,
-              }
-            : product
-        )
+      alert(
+        selectedPedido
+          ? 'Quantidade atualizada com sucesso!'
+          : data.message || 'Pedido criado com sucesso!'
       );
 
-      alert('Pedido criado com sucesso!');
       closeCreateOrder();
+      await loadProductsAndOrders();
     } catch (err) {
       alert(
         'Não foi possível conectar ao backend.'
@@ -176,11 +237,14 @@ export default function ProductsPage({
     }
   }
 
+  function goToManageOrders() {
+  onNavigate?.('feed');
+}
+
   return (
     <>
       <div className="flex-1 overflow-auto min-h-screen bg-gray-50 dark:bg-black transition-colors">
         <div className="p-8">
-          {/* HEADER */}
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
@@ -193,21 +257,18 @@ export default function ProductsPage({
             </div>
           </div>
 
-          {/* ERRO */}
           {error && (
             <div className="mb-6 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 text-sm font-semibold text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
 
-          {/* LOADING */}
           {loading && (
             <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center text-gray-600 dark:text-gray-400">
               Carregando produtos...
             </div>
           )}
 
-          {/* SEM PRODUTOS */}
           {!loading && products.length === 0 && (
             <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center">
               <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
@@ -222,14 +283,17 @@ export default function ProductsPage({
             </div>
           )}
 
-          {/* PRODUTOS */}
           {!loading && products.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product, index) => {
-                const alreadyOrdered =
-                  orderedProductIds.includes(product.id);
+                const activeOrder =
+                  getActiveOrderForProduct(product.id);
 
                 const outOfStock = product.estoque <= 0;
+                const isLider = Boolean(activeOrder?.is_lider);
+                const hasParticipation = Boolean(
+                  activeOrder?.minha_participacao
+                );
 
                 return (
                   <motion.div
@@ -312,19 +376,73 @@ export default function ProductsPage({
                         </div>
                       </div>
 
-                      {alreadyOrdered ? (
+                      {activeOrder && (
                         <div
-                          className="
-                            w-full
-                            flex items-center justify-center gap-2
-                            bg-green-100 dark:bg-green-950/40
-                            text-green-700 dark:text-green-300
-                            font-bold py-3 rounded-xl
-                            border border-green-200 dark:border-green-900
-                          "
+                          className={`
+                            mb-4 rounded-xl border p-3 text-sm font-semibold
+                            ${
+                              isLider
+                                ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300'
+                                : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900 text-green-700 dark:text-green-300'
+                            }
+                          `}
                         >
-                          <CheckCircle className="w-5 h-5" />
-                          Pedido já realizado
+                          {isLider
+                            ? `Você já criou um pedido ativo deste produto com ${activeOrder.minha_participacao?.quantidade || 0} un.`
+                            : `Você já participa de um pedido ativo deste produto com ${activeOrder.minha_participacao?.quantidade || 0} un.`}
+                        </div>
+                      )}
+
+                      {activeOrder && hasParticipation ? (
+                        <div className="space-y-3">
+                          <motion.button
+                            whileHover={{
+                              scale: 1.02,
+                            }}
+                            whileTap={{
+                              scale: 0.98,
+                            }}
+                            type="button"
+                            onClick={() =>
+                              openCreateOrEditOrder(
+                                product,
+                                activeOrder
+                              )
+                            }
+                            className="
+                              w-full
+                              flex items-center justify-center gap-2
+                              bg-gradient-to-r from-yellow-400 to-yellow-500
+                              dark:from-blue-800 dark:to-blue-950
+                              hover:from-yellow-500 hover:to-yellow-600
+                              dark:hover:from-blue-700 dark:hover:to-blue-900
+                              text-white font-bold py-3 rounded-xl shadow-lg
+                              transition
+                            "
+                          >
+                            <Edit2 className="w-5 h-5" />
+                            {isLider
+                              ? 'Editar quantidade'
+                              : 'Editar participação'}
+                          </motion.button>
+
+                          <button
+                            type="button"
+                            onClick={goToManageOrders}
+                            className="
+                              w-full
+                              flex items-center justify-center gap-2
+                              bg-gray-100 dark:bg-gray-900
+                              text-gray-700 dark:text-gray-300
+                              font-bold py-3 rounded-xl
+                              border border-gray-200 dark:border-gray-800
+                              hover:bg-gray-200 dark:hover:bg-gray-800
+                              transition
+                            "
+                          >
+                            <ExternalLink className="w-5 h-5" />
+                            Ver em Gerenciar Pedidos
+                          </button>
                         </div>
                       ) : outOfStock ? (
                         <div
@@ -348,7 +466,9 @@ export default function ProductsPage({
                             scale: 0.98,
                           }}
                           type="button"
-                          onClick={() => openCreateOrder(product)}
+                          onClick={() =>
+                            openCreateOrEditOrder(product)
+                          }
                           className="
                             w-full
                             flex items-center justify-center gap-2
@@ -373,7 +493,6 @@ export default function ProductsPage({
         </div>
       </div>
 
-      {/* MODAL CRIAR PEDIDO */}
       {selectedProduct && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
           <div
@@ -387,7 +506,9 @@ export default function ProductsPage({
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Criar Pedido
+                {selectedPedido
+                  ? 'Editar Quantidade'
+                  : 'Criar Pedido'}
               </h2>
 
               <button
@@ -455,14 +576,16 @@ export default function ProductsPage({
 
               <div className="rounded-xl bg-yellow-50 dark:bg-blue-950 border border-yellow-100 dark:border-blue-900 p-4">
                 <p className="text-sm text-yellow-800 dark:text-blue-300">
-                  Este pedido será criado como pedido coletivo e poderá aparecer na área de Gerenciar Pedidos.
+                  {selectedPedido
+                    ? 'Essa alteração atualizará a quantidade da sua participação neste pedido.'
+                    : 'Este pedido será criado como pedido coletivo e poderá aparecer na área de Gerenciar Pedidos.'}
                 </p>
               </div>
 
               <button
                 type="button"
                 disabled={creatingOrder}
-                onClick={handleCreateOrder}
+                onClick={handleCreateOrEditOrder}
                 className="
                   w-full
                   bg-gradient-to-r from-yellow-400 to-yellow-500
@@ -475,8 +598,10 @@ export default function ProductsPage({
                 "
               >
                 {creatingOrder
-                  ? 'Criando pedido...'
-                  : 'Confirmar Pedido'}
+                  ? 'Salvando...'
+                  : selectedPedido
+                    ? 'Salvar Alteração'
+                    : 'Confirmar Pedido'}
               </button>
             </div>
           </div>

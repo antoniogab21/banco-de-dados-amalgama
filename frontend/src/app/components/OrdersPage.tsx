@@ -8,6 +8,7 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
+  Edit2,
 } from 'lucide-react';
 
 interface OrdersPageProps {
@@ -30,6 +31,11 @@ interface OrderParticipant {
   quantidade: number;
 }
 
+interface MinhaParticipacao {
+  id: number;
+  quantidade: number;
+}
+
 interface Order {
   id: number;
   grupo_id: number;
@@ -39,11 +45,13 @@ interface Order {
   empresa_criadora_id: number;
   empresa_criadora_nome?: string;
   titulo: string;
-  status: 'ativo' | 'cancelado' | 'finalizado';
+  status: 'ativo' | 'cancelado' | 'finalizado' | 'fechado' | 'saiu_para_entrega';
   criado_em?: string;
   total_quantidade: number;
   itens: OrderItem[];
   participantes: OrderParticipant[];
+  is_lider?: boolean;
+  minha_participacao?: MinhaParticipacao | null;
 }
 
 export default function OrdersPage({
@@ -59,6 +67,13 @@ export default function OrdersPage({
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [editingParticipationId, setEditingParticipationId] =
+    useState<number | null>(null);
+
+  const [editQuantity, setEditQuantity] = useState('');
+  const [savingParticipation, setSavingParticipation] =
+    useState(false);
 
   async function loadOrders() {
     try {
@@ -97,7 +112,7 @@ export default function OrdersPage({
 
   const filteredOrders = orders.filter((order) => {
     if (activeTab === 'ativos') {
-      return order.status === 'ativo';
+      return order.status === 'ativo' || order.status === 'fechado' || order.status === 'saiu_para_entrega';
     }
 
     if (activeTab === 'concluidos') {
@@ -113,7 +128,7 @@ export default function OrdersPage({
 
   async function handleCancelOrder(id: number) {
     const confirmCancel = confirm(
-      'Deseja cancelar este pedido?'
+      'Deseja cancelar este pedido inteiro?'
     );
 
     if (!confirmCancel) return;
@@ -138,17 +153,104 @@ export default function OrdersPage({
         return;
       }
 
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === id
-            ? data.pedido
-            : order
-        )
-      );
+      await loadOrders();
     } catch (err) {
       alert(
         'Não foi possível conectar ao backend.'
       );
+    }
+  }
+
+  function openEditParticipation(order: Order) {
+    setEditingParticipationId(order.id);
+    setEditQuantity(
+      order.minha_participacao?.quantidade
+        ? String(order.minha_participacao.quantidade)
+        : ''
+    );
+  }
+
+  function closeEditParticipation() {
+    setEditingParticipationId(null);
+    setEditQuantity('');
+    setSavingParticipation(false);
+  }
+
+  async function handleSaveParticipation(orderId: number) {
+    const quantidade = Number(editQuantity);
+
+    if (!quantidade || quantidade <= 0) {
+      alert('Digite uma quantidade válida.');
+      return;
+    }
+
+    try {
+      setSavingParticipation(true);
+
+      const response = await fetch(
+        `/api/pedidos/${orderId}/participar`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            quantidade,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(
+          data.error ||
+            data.details ||
+            'Erro ao editar participação'
+        );
+        return;
+      }
+
+      closeEditParticipation();
+      await loadOrders();
+    } catch (err) {
+      alert('Não foi possível conectar ao backend.');
+    } finally {
+      setSavingParticipation(false);
+    }
+  }
+
+  async function handleLeaveOrder(orderId: number) {
+    const confirmLeave = confirm(
+      'Deseja cancelar sua participação neste pedido?'
+    );
+
+    if (!confirmLeave) return;
+
+    try {
+      const response = await fetch(
+        `/api/pedidos/${orderId}/sair`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(
+          data.error ||
+            data.details ||
+            'Erro ao cancelar participação'
+        );
+        return;
+      }
+
+      await loadOrders();
+    } catch (err) {
+      alert('Não foi possível conectar ao backend.');
     }
   }
 
@@ -173,12 +275,14 @@ export default function OrdersPage({
 
   function getStatusLabel(status: Order['status']) {
     if (status === 'ativo') return 'Ativo';
+    if (status === 'fechado') return 'Fechado';
+    if (status === 'saiu_para_entrega') return 'Saiu para entrega';
     if (status === 'finalizado') return 'Concluído';
     return 'Cancelado';
   }
 
   function getStatusIcon(status: Order['status']) {
-    if (status === 'ativo') {
+    if (status === 'ativo' || status === 'fechado' || status === 'saiu_para_entrega') {
       return <Clock className="w-4 h-4" />;
     }
 
@@ -190,7 +294,7 @@ export default function OrdersPage({
   }
 
   function getStatusClass(status: Order['status']) {
-    if (status === 'ativo') {
+    if (status === 'ativo' || status === 'fechado' || status === 'saiu_para_entrega') {
       return 'bg-yellow-100 text-yellow-700 dark:bg-blue-950 dark:text-blue-300';
     }
 
@@ -201,18 +305,39 @@ export default function OrdersPage({
     return 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300';
   }
 
+  function getRoleLabel(order: Order) {
+    if (userType !== 'mercado') return 'Fornecedor';
+
+    if (order.is_lider) {
+      return 'Líder do pedido';
+    }
+
+    if (order.minha_participacao) {
+      return 'Participante';
+    }
+
+    return 'Relacionado';
+  }
+
+  function canShowActions(order: Order) {
+    return (
+      userType === 'mercado' &&
+      order.status !== 'finalizado' &&
+      order.status !== 'cancelado'
+    );
+  }
+
   return (
     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-black min-h-screen transition-colors duration-300">
       <div className="p-8">
-        {/* HEADER */}
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Gerenciar Pedidos
+              Pedidos
             </h1>
 
             <p className="text-gray-600 dark:text-gray-400">
-              Controle todos os pedidos ativos e concluídos
+              Controle seus pedidos criados e suas participações
             </p>
           </div>
 
@@ -234,25 +359,12 @@ export default function OrdersPage({
           </button>
         </div>
 
-        {/* TABS */}
         <div className="flex flex-wrap gap-4 mb-6">
           {[
-            {
-              id: 'todos',
-              label: 'Todos',
-            },
-            {
-              id: 'ativos',
-              label: 'Ativos',
-            },
-            {
-              id: 'concluidos',
-              label: 'Concluídos',
-            },
-            {
-              id: 'cancelados',
-              label: 'Cancelados',
-            },
+            { id: 'todos', label: 'Todos' },
+            { id: 'ativos', label: 'Em andamento' },
+            { id: 'concluidos', label: 'Concluídos' },
+            { id: 'cancelados', label: 'Cancelados' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -271,21 +383,18 @@ export default function OrdersPage({
           ))}
         </div>
 
-        {/* ERRO */}
         {error && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 text-sm font-semibold text-red-700 dark:text-red-300">
             {error}
           </div>
         )}
 
-        {/* LOADING */}
         {loading && (
           <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center text-gray-600 dark:text-gray-400">
             Carregando pedidos...
           </div>
         )}
 
-        {/* VAZIO */}
         {!loading && filteredOrders.length === 0 && (
           <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center">
             <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-400" />
@@ -295,31 +404,23 @@ export default function OrdersPage({
             </p>
 
             <p className="text-gray-500 dark:text-gray-400">
-              Os pedidos criados em Produtos aparecerão aqui.
+              Seus pedidos criados e participações aparecerão aqui.
             </p>
           </div>
         )}
 
-        {/* LISTA */}
         {!loading && filteredOrders.length > 0 && (
           <div className="space-y-4">
             {filteredOrders.map((order, index) => {
               const firstItem = order.itens?.[0];
+              const isEditing = editingParticipationId === order.id;
 
               return (
                 <motion.div
                   key={order.id}
-                  initial={{
-                    opacity: 0,
-                    y: 20,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  transition={{
-                    delay: index * 0.05,
-                  }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
                   className="
                     bg-white dark:bg-gray-950
                     border border-gray-200 dark:border-gray-800
@@ -327,7 +428,6 @@ export default function OrdersPage({
                     transition p-4
                   "
                 >
-                  {/* TOPO */}
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div
@@ -353,6 +453,10 @@ export default function OrdersPage({
                           {order.fornecedor_nome ||
                             `Fornecedor #${order.fornecedor_id}`}
                         </p>
+
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {getRoleLabel(order)}
+                        </p>
                       </div>
                     </div>
 
@@ -366,7 +470,6 @@ export default function OrdersPage({
                     </div>
                   </div>
 
-                  {/* RESUMO */}
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -380,12 +483,11 @@ export default function OrdersPage({
 
                     <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Grupo
+                        Minha quantidade
                       </p>
 
                       <p className="font-bold text-gray-900 dark:text-white">
-                        {order.grupo_nome ||
-                          `Grupo #${order.grupo_id}`}
+                        {order.minha_participacao?.quantidade || 0} un.
                       </p>
                     </div>
 
@@ -400,7 +502,6 @@ export default function OrdersPage({
                     </div>
                   </div>
 
-                  {/* BOTÕES */}
                   <div className="mt-4 flex flex-wrap gap-3">
                     <motion.button
                       type="button"
@@ -408,9 +509,7 @@ export default function OrdersPage({
                       whileTap={{ scale: 0.98 }}
                       onClick={() =>
                         setOpenOrder(
-                          openOrder === order.id
-                            ? null
-                            : order.id
+                          openOrder === order.id ? null : order.id
                         )
                       }
                       className="
@@ -422,38 +521,130 @@ export default function OrdersPage({
                         text-white font-bold py-2 rounded-xl shadow-lg
                       "
                     >
-                      {openOrder === order.id
-                        ? 'Fechar'
-                        : 'Ver Detalhes'}
+                      {openOrder === order.id ? 'Fechar' : 'Ver Detalhes'}
                     </motion.button>
 
-                    {order.status === 'ativo' &&
-                      userType === 'mercado' && (
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() =>
-                            handleCancelOrder(order.id)
-                          }
-                          className="
-                            px-5
-                            bg-gray-100 dark:bg-gray-900
-                            hover:bg-gray-200 dark:hover:bg-gray-800
-                            text-gray-700 dark:text-gray-300
-                            font-semibold py-2 rounded-xl
-                            border border-gray-200 dark:border-gray-800
-                          "
-                        >
-                          Cancelar
-                        </motion.button>
+                    {canShowActions(order) && order.is_lider && (
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() =>
+                          handleCancelOrder(order.id)
+                        }
+                        className="
+                          px-5
+                          bg-red-50 dark:bg-red-950/30
+                          hover:bg-red-100 dark:hover:bg-red-950/50
+                          text-red-700 dark:text-red-300
+                          font-semibold py-2 rounded-xl
+                          border border-red-200 dark:border-red-900
+                        "
+                      >
+                        Cancelar Pedido
+                      </motion.button>
+                    )}
+
+                    {canShowActions(order) &&
+                      !order.is_lider &&
+                      order.minha_participacao && (
+                        <>
+                          <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => openEditParticipation(order)}
+                            className="
+                              px-5
+                              bg-gray-100 dark:bg-gray-900
+                              hover:bg-gray-200 dark:hover:bg-gray-800
+                              text-gray-700 dark:text-gray-300
+                              font-semibold py-2 rounded-xl
+                              border border-gray-200 dark:border-gray-800
+                              flex items-center gap-2
+                            "
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Editar Participação
+                          </motion.button>
+
+                          <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() =>
+                              handleLeaveOrder(order.id)
+                            }
+                            className="
+                              px-5
+                              bg-red-50 dark:bg-red-950/30
+                              hover:bg-red-100 dark:hover:bg-red-950/50
+                              text-red-700 dark:text-red-300
+                              font-semibold py-2 rounded-xl
+                              border border-red-200 dark:border-red-900
+                            "
+                          >
+                            Cancelar Participação
+                          </motion.button>
+                        </>
                       )}
                   </div>
 
-                  {/* DETALHES */}
+                  {isEditing && (
+                    <div className="mt-4 bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Nova quantidade da sua participação
+                      </label>
+
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="number"
+                          min="1"
+                          value={editQuantity}
+                          onChange={(e) => setEditQuantity(e.target.value)}
+                          className="
+                            flex-1 border border-gray-300 dark:border-gray-700
+                            bg-white dark:bg-gray-950
+                            text-gray-900 dark:text-white
+                            rounded-xl px-4 py-3 outline-none
+                            focus:border-yellow-500 dark:focus:border-blue-700
+                            focus:ring-4 focus:ring-yellow-100 dark:focus:ring-blue-950
+                            transition
+                          "
+                          placeholder="Digite a nova quantidade"
+                        />
+
+                        <button
+                          type="button"
+                          disabled={savingParticipation}
+                          onClick={() => handleSaveParticipation(order.id)}
+                          className="
+                            bg-green-600 hover:bg-green-700
+                            text-white font-bold px-6 py-3 rounded-xl
+                            transition disabled:opacity-60 disabled:cursor-not-allowed
+                          "
+                        >
+                          {savingParticipation ? 'Salvando...' : 'Salvar'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={closeEditParticipation}
+                          className="
+                            bg-gray-100 dark:bg-gray-800
+                            text-gray-700 dark:text-gray-300
+                            font-bold px-6 py-3 rounded-xl
+                            transition
+                          "
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {openOrder === order.id && (
                     <div className="mt-4 bg-gray-50 dark:bg-gray-900 rounded-2xl p-4 space-y-4">
-                      {/* ITENS */}
                       <div>
                         <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-3">
                           <Package className="w-4 h-4" />
@@ -500,7 +691,6 @@ export default function OrdersPage({
                         </div>
                       </div>
 
-                      {/* PARTICIPANTES */}
                       <div>
                         <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-3">
                           <Users className="w-4 h-4" />
