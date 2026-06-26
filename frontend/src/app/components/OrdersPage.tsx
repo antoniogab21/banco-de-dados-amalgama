@@ -523,71 +523,49 @@ export default function OrdersPage({
                     >
                       {openOrder === order.id ? 'Fechar' : 'Ver Detalhes'}
                     </motion.button>
+{canShowActions(order) &&
+  order.minha_participacao && (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => openEditParticipation(order)}
+      className="
+        px-5
+        bg-gray-100 dark:bg-gray-900
+        hover:bg-gray-200 dark:hover:bg-gray-800
+        text-gray-700 dark:text-gray-300
+        font-semibold py-2 rounded-xl
+        border border-gray-200 dark:border-gray-800
+        flex items-center gap-2
+      "
+    >
+      <Edit2 className="w-4 h-4" />
+      {order.is_lider
+        ? 'Editar Quantidade'
+        : 'Editar Participação'}
+    </motion.button>
+)}
 
-                    {canShowActions(order) && order.is_lider && (
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() =>
-                          handleCancelOrder(order.id)
-                        }
-                        className="
-                          px-5
-                          bg-red-50 dark:bg-red-950/30
-                          hover:bg-red-100 dark:hover:bg-red-950/50
-                          text-red-700 dark:text-red-300
-                          font-semibold py-2 rounded-xl
-                          border border-red-200 dark:border-red-900
-                        "
-                      >
-                        Cancelar Pedido
-                      </motion.button>
-                    )}
-
-                    {canShowActions(order) &&
-                      !order.is_lider &&
-                      order.minha_participacao && (
-                        <>
-                          <motion.button
-                            type="button"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => openEditParticipation(order)}
-                            className="
-                              px-5
-                              bg-gray-100 dark:bg-gray-900
-                              hover:bg-gray-200 dark:hover:bg-gray-800
-                              text-gray-700 dark:text-gray-300
-                              font-semibold py-2 rounded-xl
-                              border border-gray-200 dark:border-gray-800
-                              flex items-center gap-2
-                            "
-                          >
-                            <Edit2 className="w-4 h-4" />
-                            Editar Participação
-                          </motion.button>
-
-                          <motion.button
-                            type="button"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() =>
-                              handleLeaveOrder(order.id)
-                            }
-                            className="
-                              px-5
-                              bg-red-50 dark:bg-red-950/30
-                              hover:bg-red-100 dark:hover:bg-red-950/50
-                              text-red-700 dark:text-red-300
-                              font-semibold py-2 rounded-xl
-                              border border-red-200 dark:border-red-900
-                            "
-                          >
-                            Cancelar Participação
-                          </motion.button>
-                        </>
-                      )}
+{canShowActions(order) && order.is_lider && (
+  <motion.button
+    type="button"
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => handleCancelOrder(order.id)}
+    className="
+      px-5
+      bg-red-50 dark:bg-red-950/30
+      hover:bg-red-100 dark:hover:bg-red-950/50
+      text-red-700 dark:text-red-300
+      font-semibold py-2 rounded-xl
+      border border-red-200 dark:border-red-900
+    "
+  >
+    Cancelar Pedido
+  </motion.button>
+)}
+                
                   </div>
 
                   {isEditing && (
