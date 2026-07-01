@@ -2,7 +2,6 @@ from datetime import datetime
 from flask_login import UserMixin
 from sqlalchemy import UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
-
 from .extensions import db, bcrypt
 
 
@@ -35,27 +34,6 @@ class Usuario(db.Model, UserMixin):
         nullable=False
     )
 
-    tipo_definido = db.Column(
-        db.Boolean,
-        default=False
-    )
-
-    email_verificado = db.Column(
-        db.Boolean,
-        default=False,
-        nullable=False
-    )
-
-    codigo_verificacao_email = db.Column(
-        db.String(6),
-        nullable=True
-    )
-
-    codigo_verificacao_expira_em = db.Column(
-        db.DateTime,
-        nullable=True
-    )
-
     ativo = db.Column(
         db.Boolean,
         default=True
@@ -83,36 +61,13 @@ class Usuario(db.Model, UserMixin):
             senha_plain
         )
 
-    empresa = relationship(
-        'Empresa',
-        uselist=False,
-        back_populates='usuario',
-        cascade='all, delete-orphan'
-    )
-
-    fornecedor = relationship(
-        'Fornecedor',
-        uselist=False,
-        back_populates='usuario',
-        cascade='all, delete-orphan'
-    )
-
-    configuracao = relationship(
-        'ConfiguracaoUsuario',
-        uselist=False,
-        back_populates='usuario',
-        cascade='all, delete-orphan'
-    )
-
-    notificacoes = relationship(
-        'Notificacao',
-        back_populates='usuario',
-        cascade='all, delete-orphan'
-    )
+    # relacionamentos
+    empresa = relationship('Empresa', uselist=False, back_populates='usuario')
+    fornecedor = relationship('Fornecedor', uselist=False, back_populates='usuario')
 
 
 # ==========================================
-# EMPRESA / MERCADO
+# EMPRESA
 # ==========================================
 
 class Empresa(db.Model):
@@ -161,52 +116,9 @@ class Empresa(db.Model):
         onupdate=datetime.utcnow
     )
 
-    usuario = relationship(
-        'Usuario',
-        back_populates='empresa'
-    )
-
-    grupos = relationship(
-        'Grupo',
-        secondary='empresa_grupo',
-        back_populates='empresas'
-    )
-
-    seguidores = relationship(
-        'Seguidores',
-        foreign_keys='Seguidores.empresa_id',
-        back_populates='empresa',
-        cascade='all, delete-orphan'
-    )
-
-    seguindo = relationship(
-        'Seguidores',
-        foreign_keys='Seguidores.seguindo_empresa_id',
-        back_populates='seguindo_empresa',
-        cascade='all, delete-orphan'
-    )
-
-    pedidos_criados = relationship(
-        'Pedido',
-        back_populates='empresa_criadora'
-    )
-
-    participacoes = relationship(
-        'ParticipacaoPedido',
-        back_populates='empresa',
-        cascade='all, delete-orphan'
-    )
-
-    pagamentos = relationship(
-        'Pagamento',
-        back_populates='empresa',
-        cascade='all, delete-orphan'
-    )
-
-    mensagens = relationship(
-        'MensagemGrupo',
-        back_populates='empresa'
-    )
+    usuario = relationship('Usuario', back_populates='empresa')
+    grupos = relationship('Grupo', secondary='empresa_grupo', backref='empresas')
+    seguidores = relationship('Seguidores', foreign_keys='Seguidores.empresa_id', backref='empresa')
 
 
 # ==========================================
@@ -259,26 +171,8 @@ class Fornecedor(db.Model):
         onupdate=datetime.utcnow
     )
 
-    usuario = relationship(
-        'Usuario',
-        back_populates='fornecedor'
-    )
-
-    produtos = relationship(
-        'Produto',
-        back_populates='fornecedor',
-        cascade='all, delete-orphan'
-    )
-
-    pedidos = relationship(
-        'Pedido',
-        back_populates='fornecedor'
-    )
-
-    mensagens = relationship(
-        'MensagemGrupo',
-        back_populates='fornecedor'
-    )
+    usuario = relationship('Usuario', back_populates='fornecedor')
+    produtos = relationship('Produto', back_populates='fornecedor')
 
 
 # ==========================================
@@ -320,6 +214,21 @@ class Produto(db.Model):
         default=True
     )
 
+    aceita_pedido_individual = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    aceita_pedido_coletivo = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    prazo_padrao_dias = db.Column(
+        db.Integer,
+        default=3
+    )
+
     criado_em = db.Column(
         db.DateTime,
         default=datetime.utcnow
@@ -331,21 +240,7 @@ class Produto(db.Model):
         onupdate=datetime.utcnow
     )
 
-    fornecedor = relationship(
-        'Fornecedor',
-        back_populates='produtos'
-    )
-
-    itens_pedido = relationship(
-        'ItemPedido',
-        back_populates='produto'
-    )
-
-    movimentacoes = relationship(
-        'MovimentacaoEstoque',
-        back_populates='produto',
-        cascade='all, delete-orphan'
-    )
+    fornecedor = relationship('Fornecedor', back_populates='produtos')
 
 
 # ==========================================
@@ -365,31 +260,20 @@ class Grupo(db.Model):
         nullable=False
     )
 
-    descricao = db.Column(db.Text)
+    descricao = db.Column(
+        db.Text
+    )
 
-    foto_grupo = db.Column(db.Text)
+    foto_grupo = db.Column(
+        db.Text
+    )
 
     criado_em = db.Column(
         db.DateTime,
         default=datetime.utcnow
     )
 
-    empresas = relationship(
-        'Empresa',
-        secondary='empresa_grupo',
-        back_populates='grupos'
-    )
-
-    mensagens = relationship(
-        'MensagemGrupo',
-        back_populates='grupo',
-        cascade='all, delete-orphan'
-    )
-
-    pedidos = relationship(
-        'Pedido',
-        back_populates='grupo'
-    )
+    membros = relationship('Empresa', secondary='empresa_grupo', backref='membros')
 
 
 # ==========================================
@@ -417,11 +301,7 @@ class EmpresaGrupo(db.Model):
     )
 
     __table_args__ = (
-        PrimaryKeyConstraint(
-            'empresa_id',
-            'grupo_id',
-            name='pk_empresa_grupo'
-        ),
+        PrimaryKeyConstraint('empresa_id', 'grupo_id', name='pk_empresa_grupo'),
     )
 
 
@@ -455,16 +335,57 @@ class Pedido(db.Model):
         nullable=False
     )
 
-    titulo = db.Column(db.String(255))
+    titulo = db.Column(
+        db.String(255)
+    )
 
     status = db.Column(
         db.Enum(
             'ativo',
-            'cancelado',
+            'fechado',
+            'em_preparacao',
+            'saiu_para_entrega',
             'finalizado',
+            'cancelado',
             name='pedido_status'
         ),
         default='ativo'
+    )
+
+    tipo_pedido = db.Column(
+        db.Enum(
+            'individual',
+            'coletivo',
+            name='tipo_pedido'
+        ),
+        default='coletivo'
+    )
+
+    quantidade_alvo = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
+    fechado_em = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    fechado_por_empresa_id = db.Column(
+        db.Integer,
+        db.ForeignKey('empresa.id'),
+        nullable=True
+    )
+
+    fechado_por_fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey('fornecedor.id'),
+        nullable=True
+    )
+
+    data_limite = db.Column(
+        db.DateTime,
+        nullable=True
     )
 
     criado_em = db.Column(
@@ -478,38 +399,9 @@ class Pedido(db.Model):
         onupdate=datetime.utcnow
     )
 
-    grupo = relationship(
-        'Grupo',
-        back_populates='pedidos'
-    )
-
-    fornecedor = relationship(
-        'Fornecedor',
-        back_populates='pedidos'
-    )
-
-    empresa_criadora = relationship(
-        'Empresa',
-        back_populates='pedidos_criados'
-    )
-
-    itens = relationship(
-        'ItemPedido',
-        back_populates='pedido',
-        cascade='all, delete-orphan'
-    )
-
-    participacoes = relationship(
-        'ParticipacaoPedido',
-        back_populates='pedido',
-        cascade='all, delete-orphan'
-    )
-
-    pagamentos = relationship(
-        'Pagamento',
-        back_populates='pedido',
-        cascade='all, delete-orphan'
-    )
+    itens = relationship('ItemPedido', back_populates='pedido', cascade='all, delete-orphan')
+    participacoes = relationship('ParticipacaoPedido', back_populates='pedido', cascade='all, delete-orphan')
+    pagamentos = relationship('Pagamento', back_populates='pedido', cascade='all, delete-orphan')
 
 
 # ==========================================
@@ -546,15 +438,8 @@ class ItemPedido(db.Model):
         nullable=False
     )
 
-    pedido = relationship(
-        'Pedido',
-        back_populates='itens'
-    )
-
-    produto = relationship(
-        'Produto',
-        back_populates='itens_pedido'
-    )
+    pedido = relationship('Pedido', back_populates='itens')
+    produto = relationship('Produto')
 
 
 # ==========================================
@@ -591,15 +476,8 @@ class ParticipacaoPedido(db.Model):
         default=datetime.utcnow
     )
 
-    pedido = relationship(
-        'Pedido',
-        back_populates='participacoes'
-    )
-
-    empresa = relationship(
-        'Empresa',
-        back_populates='participacoes'
-    )
+    pedido = relationship('Pedido', back_populates='participacoes')
+    empresa = relationship('Empresa')
 
 
 # ==========================================
@@ -622,14 +500,12 @@ class MensagemGrupo(db.Model):
 
     empresa_id = db.Column(
         db.Integer,
-        db.ForeignKey('empresa.id'),
-        nullable=True
+        db.ForeignKey('empresa.id')
     )
 
     fornecedor_id = db.Column(
         db.Integer,
-        db.ForeignKey('fornecedor.id'),
-        nullable=True
+        db.ForeignKey('fornecedor.id')
     )
 
     mensagem = db.Column(
@@ -642,20 +518,9 @@ class MensagemGrupo(db.Model):
         default=datetime.utcnow
     )
 
-    grupo = relationship(
-        'Grupo',
-        back_populates='mensagens'
-    )
-
-    empresa = relationship(
-        'Empresa',
-        back_populates='mensagens'
-    )
-
-    fornecedor = relationship(
-        'Fornecedor',
-        back_populates='mensagens'
-    )
+    grupo = relationship('Grupo')
+    empresa = relationship('Empresa')
+    fornecedor = relationship('Fornecedor')
 
 
 # ==========================================
@@ -688,24 +553,11 @@ class Seguidores(db.Model):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            'empresa_id',
-            'seguindo_empresa_id',
-            name='uq_seguidores'
-        ),
+        UniqueConstraint('empresa_id', 'seguindo_empresa_id', name='uq_seguidores'),
     )
 
-    empresa = relationship(
-        'Empresa',
-        foreign_keys=[empresa_id],
-        back_populates='seguidores'
-    )
-
-    seguindo_empresa = relationship(
-        'Empresa',
-        foreign_keys=[seguindo_empresa_id],
-        back_populates='seguindo'
-    )
+    empresa = relationship('Empresa', foreign_keys=[empresa_id])
+    seguindo = relationship('Empresa', foreign_keys=[seguindo_empresa_id])
 
 
 # ==========================================
@@ -745,10 +597,7 @@ class MovimentacaoEstoque(db.Model):
         default=datetime.utcnow
     )
 
-    produto = relationship(
-        'Produto',
-        back_populates='movimentacoes'
-    )
+    produto = relationship('Produto')
 
 
 # ==========================================
@@ -769,9 +618,13 @@ class Notificacao(db.Model):
         nullable=False
     )
 
-    titulo = db.Column(db.String(255))
+    titulo = db.Column(
+        db.String(255)
+    )
 
-    mensagem = db.Column(db.Text)
+    mensagem = db.Column(
+        db.Text
+    )
 
     lida = db.Column(
         db.Boolean,
@@ -783,10 +636,7 @@ class Notificacao(db.Model):
         default=datetime.utcnow
     )
 
-    usuario = relationship(
-        'Usuario',
-        back_populates='notificacoes'
-    )
+    usuario = relationship('Usuario')
 
 
 # ==========================================
@@ -796,10 +646,7 @@ class Notificacao(db.Model):
 class Pagamento(db.Model):
     __tablename__ = 'pagamento'
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
+    id = db.Column(db.Integer, primary_key=True)
 
     pedido_id = db.Column(
         db.Integer,
@@ -813,53 +660,29 @@ class Pagamento(db.Model):
         nullable=False
     )
 
-    valor = db.Column(
-        db.Numeric(10, 2),
-        nullable=False
-    )
+    valor = db.Column(db.Numeric(10,2), nullable=False)
 
     status = db.Column(
-        db.Enum(
-            'pendente',
-            'pago',
-            'cancelado',
-            name='pagamento_status'
-        ),
+        db.Enum('pendente','pago','cancelado', name='pagamento_status'),
         default='pendente'
     )
 
-    pago_em = db.Column(
-        db.DateTime,
-        nullable=True
-    )
+    pago_em = db.Column(db.DateTime, nullable=True)
 
-    criado_em = db.Column(
-        db.DateTime,
-        default=datetime.utcnow
-    )
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
-    pedido = relationship(
-        'Pedido',
-        back_populates='pagamentos'
-    )
-
-    empresa = relationship(
-        'Empresa',
-        back_populates='pagamentos'
-    )
+    pedido = relationship('Pedido', back_populates='pagamentos')
+    empresa = relationship('Empresa')
 
 
 # ==========================================
-# CONFIGURAÇÃO USUÁRIO
+# CONFIGURACAO USUARIO
 # ==========================================
 
 class ConfiguracaoUsuario(db.Model):
     __tablename__ = 'configuracao_usuario'
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True
-    )
+    id = db.Column(db.Integer, primary_key=True)
 
     usuario_id = db.Column(
         db.Integer,
@@ -868,17 +691,8 @@ class ConfiguracaoUsuario(db.Model):
         unique=True
     )
 
-    receber_notificacoes = db.Column(
-        db.Boolean,
-        default=True
-    )
+    receber_notificacoes = db.Column(db.Boolean, default=True)
 
-    tema = db.Column(
-        db.String(50),
-        default='light'
-    )
+    tema = db.Column(db.String(50), default='light')
 
-    usuario = relationship(
-        'Usuario',
-        back_populates='configuracao'
-    )
+    usuario = relationship('Usuario')
