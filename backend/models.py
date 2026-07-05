@@ -118,7 +118,11 @@ class Empresa(db.Model):
 
     usuario = relationship('Usuario', back_populates='empresa')
     grupos = relationship('Grupo', secondary='empresa_grupo', backref='empresas')
-    seguidores = relationship('Seguidores', foreign_keys='Seguidores.empresa_id', backref='empresa')
+    seguidores = relationship(
+    'Seguidores',
+    foreign_keys='Seguidores.empresa_id',
+    back_populates='empresa'
+)
 
 
 # ==========================================
@@ -229,6 +233,16 @@ class Produto(db.Model):
         default=3
     )
 
+    frete_gratis_acima = db.Column(
+        db.Numeric(10, 2),
+        nullable=True
+    )
+
+    meta_coletiva_sugerida = db.Column(
+        db.Integer,
+        nullable=True
+    )
+
     criado_em = db.Column(
         db.DateTime,
         default=datetime.utcnow
@@ -242,6 +256,50 @@ class Produto(db.Model):
 
     fornecedor = relationship('Fornecedor', back_populates='produtos')
 
+
+# ==========================================
+# FAIXAS DE DESCONTO DO PRODUTO
+# ==========================================
+
+class FaixaDescontoProduto(db.Model):
+    __tablename__ = 'faixa_desconto_produto'
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    produto_id = db.Column(
+        db.Integer,
+        db.ForeignKey('produto.id'),
+        nullable=False
+    )
+
+    quantidade_minima = db.Column(
+        db.Integer,
+        nullable=False
+    )
+
+    percentual_desconto = db.Column(
+        db.Numeric(5, 2),
+        nullable=False,
+        default=0
+    )
+
+    preco_unitario = db.Column(
+        db.Numeric(10, 2),
+        nullable=False
+    )
+
+    criado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    produto = relationship(
+        'Produto',
+        backref='faixas_desconto'
+    )
 
 # ==========================================
 # GRUPOS
@@ -477,7 +535,10 @@ class ParticipacaoPedido(db.Model):
     )
 
     pedido = relationship('Pedido', back_populates='participacoes')
-    empresa = relationship('Empresa')
+    empresa = relationship(
+    'Empresa',
+    foreign_keys=[empresa_id],
+)
 
 
 # ==========================================

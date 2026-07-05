@@ -15,7 +15,11 @@ def load_user(user_id):
 def register():
     data = request.json or request.form
     email = data.get('email')
-    senha = data.get('senha')
+
+    senha = (
+    data.get('senha')
+    or data.get('password')
+ )
     tipo = data.get('tipo', 'mercado')
     if not email or not senha:
         return jsonify({'error': 'email and senha required'}), 400
@@ -32,14 +36,26 @@ def register():
 def api_login():
     data = request.json or request.form
     email = data.get('email')
-    senha = data.get('senha')
+
+    senha = (
+    data.get('senha')
+    or data.get('password')
+)
     if not email or not senha:
         return jsonify({'error': 'email and senha required'}), 400
     user = Usuario.query.filter_by(email=email).first()
     if not user or not user.check_password(senha):
         return jsonify({'error': 'invalid credentials'}), 401
     login_user(user)
-    return jsonify({'message': 'logged in', 'user_id': user.id})
+    return jsonify({
+    'message': 'logged in',
+    'user': {
+        'id': user.id,
+        'email': user.email,
+        'tipo': user.tipo,
+        'ativo': user.ativo
+    }
+})
 
 
 @bp.route('/api/me', methods=['GET'])
