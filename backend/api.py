@@ -1,3 +1,5 @@
+import re
+import requests
 from flask import Blueprint, jsonify, request, abort
 from .models import (
     Produto, Pedido, MensagemGrupo, ItemPedido, ParticipacaoPedido,
@@ -5,8 +7,135 @@ from .models import (
     MovimentacaoEstoque, Pagamento, Notificacao, ConfiguracaoUsuario
 )
 from .extensions import db
+from flask_login import current_user, login_required
 
 bp = Blueprint('api', __name__, url_prefix='/api')
+
+@bp.route('/dashboard/mercado', methods=['GET'])
+@login_required
+def dashboard_mercado():
+    empresa = Empresa.query.filter_by(usuario_id=current_user.id).first()
+
+    if not empresa:
+        return jsonify({'error': 'Perfil de mercado não encontrado'}), 404
+
+    pedidos_criados = Pedido.query.filter_by(
+        empresa_criadora_id=empresa.id
+    ).all()
+
+    participacoes = ParticipacaoPedido.query.filter_by(
+        empresa_id=empresa.id
+    ).all()
+
+    pedido_ids = {pedido.id for pedido in pedidos_criados}
+    pedido_ids.update(participacao.pedido_id for participacao in participacoes)
+
+    pedidos = Pedido.query.filter(Pedido.id.in_(pedido_ids)).all() if pedido_ids else []
+
+    atividade_recente = []
+
+    for pedido in sorted(
+        pedidos,
+        key=lambda item: item.criado_em,
+        reverse=True,
+    )[:10]:
+        itens = pedido.itens
+        primeiro_item = itens[0] if itens else None
+        fornecedor = Fornecedor.query.get(pedido.fornecedor_id)
+
+        quantidade = sum(item.quantidade for item in itens)
+        valor = sum(
+            float(item.preco_unitario) * item.quantidade
+            for item in itens
+        )
+
+        atividade_recente.append({
+            'id': pedido.id,
+            'titulo': pedido.titulo or 'Pedido coletivo',
+            'fornecedor_nome': fornecedor.nome if fornecedor else None,
+            'produto_nome': primeiro_item.produto.nome if primeiro_item else None,
+            'quantidade': quantidade,
+            'valor': valor,
+            'status': pedido.status,
+            'criado_em': pedido.criado_em.isoformat() if pedido.criado_em else None,
+            'foi_criado_por_mim': pedido.empresa_criadora_id == empresa.id,
+            'estou_participando': any(
+                participacao.pedido_id == pedido.id
+                for participacao in participacoes
+            ),
+            'esta_concluido': pedido.status == 'finalizado',
+        })
+
+    pedidos_ativos = [
+        pedido for pedido in pedidos
+        if pedido.status == 'ativo'
+    ]
+
+    return jsonify({
+        'pedidos_criados_por_mim': sum(
+            pedido.empresa_criadora_id == empresa.id
+            for pedido in pedidos_ativos
+        ),
+        'pedidos_ativos': len(pedidos_ativos),
+        'participando': sum(
+            participacao.pedido_id in {
+                pedido.id for pedido in pedidos_ativos
+            }
+            for participacao in participacoes
+        ),
+        'concluidos': sum(
+            pedido.status == 'finalizado'
+            for pedido in pedidos
+        ),
+        'total_pedidos': sum(
+            pedido.status != 'cancelado'
+            for pedido in pedidos
+        ),
+        'gasto_total': 0,
+        'gastos': {
+            'criados_por_mim': 0,
+            'participando': 0,
+            'concluidos': 0,
+            'total': 0,
+        },
+        'atividade_recente': atividade_recente,
+        'fornecedores_mais_usados': [],
+    })
+
+
+@bp.route('/cnpj/<cnpj>', methods=['GET'])
+def consultar_cnpj(cnpj):
+    cnpj_limpo = re.sub(r'\D', '', cnpj)
+
+    if len(cnpj_limpo) != 14:
+        return jsonify({'error': 'CNPJ invalido'}), 400
+
+    try:
+        resposta = requests.get(
+            f'https://brasilapi.com.br/api/cnpj/v1/{cnpj_limpo}',
+            timeout=10,
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'Nao foi possivel consultar o CNPJ'}), 503
+
+    if resposta.status_code == 404:
+        return jsonify({'error': 'CNPJ nao encontrado'}), 404
+
+    if resposta.status_code != 200:
+        return jsonify({'error': 'Erro ao consultar o CNPJ'}), 502
+
+    dados = resposta.json()
+
+    return jsonify({
+        'cnpj': cnpj_limpo,
+        'nome': dados.get('razao_social') or dados.get('nome_fantasia'),
+        'telefone': dados.get('ddd_telefone_1'),
+        'endereco': dados.get('logradouro'),
+        'numero': dados.get('numero'),
+        'bairro': dados.get('bairro'),
+        'cidade': dados.get('municipio'),
+        'estado': dados.get('uf'),
+    })
 
 
 # -----------------------

@@ -5,6 +5,8 @@ import { Mail, Lock } from 'lucide-react';
 import logoLight from '../../assets/Subalterno.png';
 import logoDark from '../../assets/SubalternoDark.png';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
 interface LoginFormNewProps {
   onLogin: (data: any) => void;
   onSwitchToRegister: () => void;
@@ -16,49 +18,37 @@ export default function LoginFormNew({
 }: LoginFormNewProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (
-    e: React.FormEvent
-  ) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setError('');
     setLoading(true);
 
     try {
-      const response = await fetch(
-        '/api/login',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(
-          data.error ||
-            data.details ||
-            'Erro ao fazer login'
-        );
-
-        setLoading(false);
+        setError(data.error || data.details || 'Erro ao fazer login.');
         return;
       }
 
       onLogin(data);
-    } catch (err) {
+    } catch {
       setError(
         'Não foi possível conectar ao backend. Verifique se o Flask está rodando na porta 5001.'
       );
@@ -70,17 +60,10 @@ export default function LoginFormNew({
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6 transition-colors duration-300">
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 20,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* LOGO */}
         <div className="text-center mb-1">
           <div className="w-100 h-100 mx-auto mb-1 overflow-hidden flex items-center justify-center">
             <img
@@ -88,7 +71,6 @@ export default function LoginFormNew({
               alt="Logo Amalgama"
               className="w-full h-full object-contain block dark:hidden"
             />
-
             <img
               src={logoDark}
               alt="Logo Amalgama modo escuro"
@@ -97,7 +79,6 @@ export default function LoginFormNew({
           </div>
         </div>
 
-        {/* CARD */}
         <div className="bg-card border border-border rounded-2xl shadow-lg p-8 transition-colors duration-300">
           <h2 className="text-2xl font-bold text-foreground mb-6">
             Entrar na conta
@@ -109,11 +90,7 @@ export default function LoginFormNew({
             </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-          >
-            {/* EMAIL */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label
                 htmlFor="email"
@@ -131,33 +108,15 @@ export default function LoginFormNew({
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                  className="
-                    w-full
-                    pl-12
-                    pr-4
-                    py-3.5
-                    rounded-xl
-                    border-2
-                    border-border
-                    bg-background
-                    text-foreground
-                    focus:border-primary
-                    focus:ring-4
-                    focus:ring-primary/20
-                    outline-none
-                    transition
-                    placeholder:text-muted-foreground
-                  "
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-border bg-background text-foreground focus:border-primary focus:ring-4 focus:ring-primary/20 outline-none transition placeholder:text-muted-foreground"
                   placeholder="Digite seu email"
+                  autoComplete="email"
                   required
                 />
               </div>
             </div>
 
-            {/* SENHA */}
             <div>
               <label
                 htmlFor="password"
@@ -175,71 +134,31 @@ export default function LoginFormNew({
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  className="
-                    w-full
-                    pl-12
-                    pr-4
-                    py-3.5
-                    rounded-xl
-                    border-2
-                    border-border
-                    bg-background
-                    text-foreground
-                    focus:border-primary
-                    focus:ring-4
-                    focus:ring-primary/20
-                    outline-none
-                    transition
-                    placeholder:text-muted-foreground
-                  "
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-border bg-background text-foreground focus:border-primary focus:ring-4 focus:ring-primary/20 outline-none transition placeholder:text-muted-foreground"
                   placeholder="Digite sua senha"
+                  autoComplete="current-password"
                   required
                 />
               </div>
             </div>
 
-            {/* BOTÃO */}
             <motion.button
-              whileHover={{
-                scale: loading ? 1 : 1.02,
-              }}
-              whileTap={{
-                scale: loading ? 1 : 0.98,
-              }}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
               type="submit"
               disabled={loading}
-              className="
-                w-full
-                bg-primary
-                hover:opacity-90
-                text-primary-foreground
-                font-bold
-                py-4
-                rounded-xl
-                transition
-                shadow-lg
-                disabled:opacity-60
-                disabled:cursor-not-allowed
-              "
+              className="w-full bg-primary hover:opacity-90 text-primary-foreground font-bold py-4 rounded-xl transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </motion.button>
           </form>
 
-          {/* REGISTRO */}
           <div className="mt-6 text-center">
             <button
               onClick={onSwitchToRegister}
               type="button"
-              className="
-                text-muted-foreground
-                hover:text-primary
-                font-semibold
-                transition
-              "
+              className="text-muted-foreground hover:text-primary font-semibold transition"
             >
               Criar conta
             </button>

@@ -11,6 +11,8 @@ import {
   Edit2,
 } from 'lucide-react';
 
+const API_URL = 'http://localhost:5001';
+
 interface OrdersPageProps {
   userType: 'mercado' | 'fornecedor';
 }
@@ -80,7 +82,7 @@ export default function OrdersPage({
       setLoading(true);
       setError('');
 
-      const response = await fetch('/api/pedidos', {
+      const response = await fetch(`${API_URL}/api/pedidos`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -135,7 +137,7 @@ export default function OrdersPage({
 
     try {
       const response = await fetch(
-        `/api/pedidos/${id}/cancelar`,
+        `${API_URL}/api/pedidos/${id}/cancelar`,
         {
           method: 'POST',
           credentials: 'include',
@@ -188,7 +190,7 @@ export default function OrdersPage({
       setSavingParticipation(true);
 
       const response = await fetch(
-        `/api/pedidos/${orderId}/participar`,
+        `${API_URL}/api/pedidos/${orderId}/participar`,
         {
           method: 'POST',
           headers: {
@@ -230,7 +232,7 @@ export default function OrdersPage({
 
     try {
       const response = await fetch(
-        `/api/pedidos/${orderId}/sair`,
+        `${API_URL}/api/pedidos/${orderId}/sair`,
         {
           method: 'POST',
           credentials: 'include',

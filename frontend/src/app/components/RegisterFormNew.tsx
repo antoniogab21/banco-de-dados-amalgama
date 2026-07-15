@@ -9,6 +9,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+const API_URL = 'http://localhost:5001';
+
 interface RegisterFormNewProps {
   onRegister: (data: {
     companyName: string;
@@ -73,7 +75,7 @@ const buscarCnpj = async (
     setConsultandoCnpj(true);
 
     const response = await fetch(
-      `/api/cnpj/${cnpjLimpo}`
+      `${API_URL}/api/cnpj/${cnpjLimpo}`
     );
 
     const data = await response.json();
@@ -135,7 +137,7 @@ if (enderecoCompleto) {
 
     try {
       const response = await fetch(
-        '/api/register',
+        `${API_URL}/api/register`,
         {
           method: 'POST',
           headers: {

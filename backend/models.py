@@ -39,6 +39,22 @@ class Usuario(db.Model, UserMixin):
         default=True
     )
 
+    email_verificado = db.Column(
+    db.Boolean,
+    nullable=False,
+    default=False,
+    )
+
+    codigo_verificacao = db.Column(
+    db.String(6),
+    nullable=True,
+)
+
+    codigo_verificacao_expira_em = db.Column(
+    db.DateTime,
+    nullable=True,
+    )
+
     criado_em = db.Column(
         db.DateTime,
         default=datetime.utcnow
@@ -117,7 +133,11 @@ class Empresa(db.Model):
     )
 
     usuario = relationship('Usuario', back_populates='empresa')
-    grupos = relationship('Grupo', secondary='empresa_grupo', backref='empresas')
+    grupos = relationship(
+    'Grupo',
+    secondary='empresa_grupo',
+    back_populates='membros',
+)
     seguidores = relationship(
     'Seguidores',
     foreign_keys='Seguidores.empresa_id',
@@ -331,7 +351,11 @@ class Grupo(db.Model):
         default=datetime.utcnow
     )
 
-    membros = relationship('Empresa', secondary='empresa_grupo', backref='membros')
+    membros = relationship(
+    'Empresa',
+    secondary='empresa_grupo',
+    back_populates='grupos',
+)
 
 
 # ==========================================
@@ -617,7 +641,11 @@ class Seguidores(db.Model):
         UniqueConstraint('empresa_id', 'seguindo_empresa_id', name='uq_seguidores'),
     )
 
-    empresa = relationship('Empresa', foreign_keys=[empresa_id])
+    empresa = relationship(
+    'Empresa',
+    foreign_keys=[empresa_id],
+    back_populates='seguidores',
+)
     seguindo = relationship('Empresa', foreign_keys=[seguindo_empresa_id])
 
 

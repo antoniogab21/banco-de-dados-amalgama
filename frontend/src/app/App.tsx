@@ -24,6 +24,8 @@ import SettingsPage from './components/SettingsPage';
 import SidebarNew from './components/SidebarNew';
 import DashboardNew from './components/DashboardNew';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
 type Screen =
   | 'login'
   | 'register'
@@ -165,7 +167,7 @@ export default function App() {
 
   try {
     const response = await fetch(
-      '/api/select-type',
+      `${API_URL}/api/select-type`,
       {
         method: 'POST',
         headers: {
@@ -249,7 +251,7 @@ estado:
   const handleLogout = async () => {
     try {
       await fetch(
-        '/api/logout',
+        `${API_URL}/api/logout`,
         {
           method: 'POST',
           credentials: 'include',
