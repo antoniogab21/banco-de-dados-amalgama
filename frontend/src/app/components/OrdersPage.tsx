@@ -11,7 +11,7 @@ import {
   Edit2,
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5001';
+const API_URL = '';
 
 interface OrdersPageProps {
   userType: 'mercado' | 'fornecedor';

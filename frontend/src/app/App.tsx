@@ -24,7 +24,7 @@ import SettingsPage from './components/SettingsPage';
 import SidebarNew from './components/SidebarNew';
 import DashboardNew from './components/DashboardNew';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = '';
 
 type Screen =
   | 'login'

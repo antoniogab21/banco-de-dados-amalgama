@@ -5,7 +5,7 @@ import { Mail, Lock } from 'lucide-react';
 import logoLight from '../../assets/Subalterno.png';
 import logoDark from '../../assets/SubalternoDark.png';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = '';
 
 interface LoginFormNewProps {
   onLogin: (data: any) => void;
