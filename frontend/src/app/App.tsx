@@ -157,7 +157,12 @@ export default function App() {
     localStorage.getItem('pendingCnpj') ||
     '';
 
-  if (!company || !cnpj) {
+    const email =
+  pendingRegisterData?.email ||
+  localStorage.getItem('pendingEmail') ||
+  '';
+
+  if (!company || !cnpj || !email) {
     alert(
       'Dados do cadastro não encontrados. Faça o cadastro novamente.'
     );
@@ -176,6 +181,7 @@ export default function App() {
         credentials: 'include',
         body: JSON.stringify({
           tipo: type,
+          email: email,
           companyName: company,
           cnpj,
           telefone:

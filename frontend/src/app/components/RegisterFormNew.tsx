@@ -244,18 +244,19 @@ localStorage.setItem(
 
     try {
       const response = await fetch(
-        '/api/verify-email',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            codigo: verificationCode,
-          }),
-        }
-      );
+  `${API_URL}/api/verify-email`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      email: localStorage.getItem('pendingEmail') || email,
+      codigo: verificationCode.trim(),
+    }),
+  }
+);
 
       const data = await response.json();
 
