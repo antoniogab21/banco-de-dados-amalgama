@@ -365,26 +365,158 @@ def criar_pedido():
     db.session.commit()
     return jsonify({'id': pedido.id}), 201
 
+@bp.route('/pedidos/disponiveis', methods=['GET'])
+@login_required
+def pedidos_disponiveis():
+    empresa = Empresa.query.filter_by(usuario_id=current_user.id).first()
+
+    if not empresa:
+        return jsonify({'error': 'empresa não encontrada'}), 404
+
+    grupos_ids = [grupo.id for grupo in empresa.grupos]
+
+    if not grupos_ids:
+        return jsonify([])
+
+    pedidos = Pedido.query.filter(
+        Pedido.grupo_id.in_(grupos_ids),
+        Pedido.status != 'cancelado'
+    ).order_by(Pedido.criado_em.desc()).all()
+
+    resultado = []
+
+    for pedido in pedidos:
+        grupo = Grupo.query.get(pedido.grupo_id)
+        fornecedor = Fornecedor.query.get(pedido.fornecedor_id)
+        criadora = Empresa.query.get(pedido.empresa_criadora_id)
+
+        participantes = []
+        for part in pedido.participacoes:
+            participantes.append({
+                'id': part.id,
+                'empresa_id': part.empresa_id,
+                'empresa_nome': part.empresa.nome if part.empresa else None,
+                'quantidade': part.quantidade
+            })
+
+        itens = []
+        for item in pedido.itens:
+            produto = Produto.query.get(item.produto_id)
+            itens.append({
+                'id': item.id,
+                'produto_id': item.produto_id,
+                'produto_nome': produto.nome if produto else None,
+                'produto_imagem': produto.imagem if produto else None,
+                'quantidade': item.quantidade,
+                'preco_unitario': float(item.preco_unitario or 0)
+            })
+
+        minha_participacao = ParticipacaoPedido.query.filter_by(
+            pedido_id=pedido.id,
+            empresa_id=empresa.id
+        ).first()
+
+        resultado.append({
+            'id': pedido.id,
+            'grupo_id': pedido.grupo_id,
+            'grupo_nome': grupo.nome if grupo else None,
+            'fornecedor_id': pedido.fornecedor_id,
+            'fornecedor_nome': fornecedor.nome if fornecedor else None,
+            'empresa_criadora_id': pedido.empresa_criadora_id,
+            'empresa_criadora_nome': criadora.nome if criadora else None,
+            'titulo': pedido.titulo,
+            'status': pedido.status,
+            'criado_em': pedido.criado_em.isoformat() if pedido.criado_em else None,
+            'atualizado_em': pedido.atualizado_em.isoformat() if pedido.atualizado_em else None,
+            'total_quantidade': sum(p['quantidade'] for p in participantes),
+            'itens': itens,
+            'participantes': participantes,
+            'is_lider': pedido.empresa_criadora_id == empresa.id,
+            'minha_participacao': {
+                'id': minha_participacao.id,
+                'quantidade': minha_participacao.quantidade
+            } if minha_participacao else None
+        })
+
+    return jsonify(resultado)
+
 
 @bp.route('/pedidos/<int:pedido_id>/participar', methods=['POST'])
+@login_required
 def participar_pedido(pedido_id):
+    empresa = Empresa.query.filter_by(usuario_id=current_user.id).first()
+
+    if not empresa:
+        return jsonify({'error': 'empresa não encontrada'}), 404
+
     data = request.json or {}
-    empresa_id = data.get('empresa_id')
-    quantidade = data.get('quantidade')
-    if not empresa_id or quantidade is None:
-        return jsonify({'error':'empresa_id and quantidade required'}),400
+
+    try:
+        quantidade = int(data.get('quantidade', 0))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'quantidade inválida'}), 400
+
+    if quantidade <= 0:
+        return jsonify({'error': 'quantidade deve ser maior que zero'}), 400
+
     pedido = Pedido.query.get_or_404(pedido_id)
+
     if pedido.status != 'ativo':
-        return jsonify({'error':'pedido not active'}),400
-    # cria ou atualiza participacao
-    part = ParticipacaoPedido.query.filter_by(pedido_id=pedido_id, empresa_id=empresa_id).first()
+        return jsonify({'error': 'pedido não está ativo'}), 400
+
+    if pedido.empresa_criadora_id == empresa.id:
+        return jsonify({'error': 'a empresa criadora não pode participar'}), 400
+
+    grupos_ids = [grupo.id for grupo in empresa.grupos]
+
+    if pedido.grupo_id not in grupos_ids:
+        return jsonify({'error': 'empresa não pertence ao grupo'}), 403
+
+    part = ParticipacaoPedido.query.filter_by(
+        pedido_id=pedido_id,
+        empresa_id=empresa.id
+    ).first()
+
     if part:
         part.quantidade = quantidade
     else:
-        part = ParticipacaoPedido(pedido_id=pedido_id, empresa_id=empresa_id, quantidade=quantidade)
+        part = ParticipacaoPedido(
+            pedido_id=pedido_id,
+            empresa_id=empresa.id,
+            quantidade=quantidade
+        )
         db.session.add(part)
+
     db.session.commit()
-    return jsonify({'id': part.id}),201
+
+    return jsonify({'id': part.id}), 201
+
+
+@bp.route('/pedidos/<int:pedido_id>/sair', methods=['POST'])
+@login_required
+def sair_pedido(pedido_id):
+    empresa = Empresa.query.filter_by(usuario_id=current_user.id).first()
+
+    if not empresa:
+        return jsonify({'error': 'empresa não encontrada'}), 404
+
+    pedido = Pedido.query.get_or_404(pedido_id)
+
+    if pedido.status != 'ativo':
+        return jsonify({'error': 'pedido não está ativo'}), 400
+
+    participacao = ParticipacaoPedido.query.filter_by(
+        pedido_id=pedido_id,
+        empresa_id=empresa.id
+    ).first()
+
+    if not participacao:
+        return jsonify({'error': 'participação não encontrada'}), 404
+
+    db.session.delete(participacao)
+    db.session.commit()
+
+    return jsonify({'message': 'participação cancelada com sucesso'})
 
 
 @bp.route('/pedidos/<int:pedido_id>/cancelar', methods=['POST'])
